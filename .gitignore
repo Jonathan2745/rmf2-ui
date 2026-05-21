@@ -132,10 +132,8 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-
-
-# pnpm
 .pnpm-store
-
-# IDE / agent
-.agent*
+apartment_floor_plan
+.DS_Store
+.cursor
+.agents

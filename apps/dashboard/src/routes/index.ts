@@ -12,11 +12,52 @@ export const AdminRoutes: RouteObject[] = [
     },
   },
   {
+<<<<<<< HEAD
     path: 'system/network',
     lazy: async () => {
       const { Network } = await import('@/pages/dashboard/system/network');
       return { Component: Network };
     },
+=======
+    // System
+    path: 'system',
+    children: [
+      // System Home
+      {
+        index: true,
+        lazy: async () => {
+          const { Home } = await import('@/pages/dashboard/home');
+          return { Component: Home };
+        },
+      },
+      {
+        // Network
+        path: 'network',
+        lazy: async () => {
+          const { Network } = await import('@/pages/dashboard/system/network');
+          return { Component: Network };
+        },
+      },
+      {
+        // Simulation
+        path: 'simulation',
+        lazy: async () => {
+          const { Simulation } = await import(
+            '@/pages/dashboard/system/simulation'
+          );
+          return { Component: Simulation };
+        },
+      },
+      {
+        // Map
+        path: 'map',
+        lazy: async () => {
+          const { Map } = await import('@/pages/dashboard/system/map');
+          return { Component: Map };
+        },
+      },
+    ],
+>>>>>>> 4432559 (feat(map): integrate Three.js for navigation overlay and scene viewer)
   },
   {
     path: 'system/simulation',
