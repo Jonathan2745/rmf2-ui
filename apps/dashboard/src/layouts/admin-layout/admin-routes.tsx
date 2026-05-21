@@ -1,5 +1,9 @@
 import { Icon } from '@chakra-ui/react';
+<<<<<<< HEAD
 import { MdDashboard, MdEventNote, MdHome } from 'react-icons/md';
+=======
+import { MdOutlineTask, MdHome, MdMap } from 'react-icons/md';
+>>>>>>> 4432559 (feat(map): integrate Three.js for navigation overlay and scene viewer)
 import { FaNetworkWired } from 'react-icons/fa';
 import { SiUnrealengine } from 'react-icons/si';
 import { GrSchedules } from 'react-icons/gr';
@@ -49,6 +53,13 @@ export const routes: DashboardRoute[] = [
         path: '/system/simulation',
         description:
           'Onboard devices and services, run UE5 simulation via the Python launcher API.',
+      },
+      {
+        name: 'Map',
+        path: '/system/map',
+        icon: (
+          <Icon as={MdMap} width="20px" height="30px" color="inherit" />
+        ),
       },
     ],
   },
