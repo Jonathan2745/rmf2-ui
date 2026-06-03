@@ -23,7 +23,9 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { DropPointMarker } from '../drop-point-marker';
 import { NavigationOverlay } from '../navigation-overlay';
 
-const SCENE_URL = '/scene.draco.glb';
+const SCENE_URL = '/RMF2_SIM/Test_3.glb';
+
+// const SCENE_URL = '/scene.draco.glb';
 const DRACO_DECODER_PATH =
   'https://www.gstatic.com/draco/versioned/decoders/1.5.6/';
 const INTRO_DURATION_MS = 500;
