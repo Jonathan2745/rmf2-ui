@@ -26,7 +26,12 @@ import { NavigationOverlay } from '../navigation-overlay';
 
 const SCENE_URL = '/RMF2_SIM/Test_3.glb';
 const ROBOT_MODEL_URL = '/robot.glb';
-const ROBOTS_CONFIG_URL = '/robots.json';
+// const ROBOTS_CONFIG_URL = '/robots.json';
+// replaced with API route
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8008';
+const ROBOTS_CONFIG_URL = `${API_BASE_URL}/api/robots`;
+
 const ROBOT_CONFIG_REFRESH_MS = 1000;
 const ROBOT_COLLISION_PADDING = 0.05;
 const ROBOT_ARRIVAL_EPSILON = 0.05;
