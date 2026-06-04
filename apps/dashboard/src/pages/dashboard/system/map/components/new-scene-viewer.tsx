@@ -30,7 +30,13 @@ const ROBOTS_CONFIG_URL = '/robots.json';
 const ROBOT_CONFIG_REFRESH_MS = 1000;
 const ROBOT_COLLISION_PADDING = 0.05;
 const ROBOT_ARRIVAL_EPSILON = 0.05;
+const ROBOT_HEADING_OFFSET_Z = -Math.PI / 2;
 const STATIC_COLLISION_IGNORE_NAMES = new Set(['Box128', 'Box127']);
+
+// Line drawer portion for robot //
+const ROBOT_TRAIL_Z_OFFSET = 0.08;
+const ROBOT_TRAIL_SAMPLE_DISTANCE = 0.25;
+const DEFAULT_ROBOT_COLOR = '#00A3FF';
 
 // const SCENE_URL = '/scene.draco.glb';
 const DRACO_DECODER_PATH =
@@ -80,6 +86,7 @@ type RobotWaypoint = DropPointCoords & {
 type RobotConfig = {
   id: string;
   name?: string;
+  color?: string;
   position?: Partial<DropPointCoords>;
   target?: Partial<DropPointCoords> | null;
   path?: RobotWaypoint[];
@@ -113,6 +120,8 @@ type RobotRuntime = {
   pathIndex: number;
   lastConfigPositionKey: string;
   lastConfigPathKey: string;
+  lastConfigTrailKey: string;
+  trail?: RobotTrailRuntime;
   blockedBy?: string;
   status: RobotMotionStatus;
 };
@@ -120,6 +129,18 @@ type RobotRuntime = {
 type StaticCollisionBox = {
   box: THREE.Box3;
   name: string;
+};
+
+type RobotTrailRuntime = {
+  group: THREE.Group;
+  plannedLine: THREE.Line;
+  activeLine: THREE.Line;
+  plannedMaterial: THREE.LineBasicMaterial;
+  activeMaterial: THREE.LineBasicMaterial;
+  plannedGeometry: THREE.BufferGeometry;
+  activeGeometry: THREE.BufferGeometry;
+  visitedPoints: THREE.Vector3[];
+  lastSampledPoint: THREE.Vector3;
 };
 
 type SceneViewerApi = {
@@ -344,6 +365,7 @@ function normalizeRobotConfigs(payload: unknown): RobotConfig[] {
           ? robot.id
           : `robot-${index + 1}`,
       name: typeof robot.name === 'string' ? robot.name : undefined,
+      color: typeof robot.color === 'string' ? robot.color : undefined,
       position: isRecord(robot.position) ? robot.position : undefined,
       target:
         isRecord(robot.target) || robot.target === null
@@ -493,6 +515,148 @@ function toRobotStatus(robot: RobotRuntime, floorZ: number): RobotStatus {
   };
 }
 
+function robotTrailKey(config: RobotConfig) {
+  return [
+    config.color ?? DEFAULT_ROBOT_COLOR,
+    config.coordinateSystem ?? 'navigation',
+    pathKey(config.path),
+  ].join('::');
+}
+
+function getRobotColor(config: RobotConfig) {
+  try {
+    return new THREE.Color(config.color ?? DEFAULT_ROBOT_COLOR);
+  } catch {
+    return new THREE.Color(DEFAULT_ROBOT_COLOR);
+  }
+}
+
+function withTrailOffset(point: THREE.Vector3) {
+  return point.clone().add(new THREE.Vector3(0, 0, ROBOT_TRAIL_Z_OFFSET));
+}
+
+function getRobotPathWorldPoints(
+  config: RobotConfig,
+  floorZ: number,
+): THREE.Vector3[] {
+  const coordinateSystem = config.coordinateSystem ?? 'navigation';
+
+  return (config.path ?? []).map((waypoint) => {
+    const world = configCoordsToWorld(
+      waypoint,
+      { x: 0, y: 0, z: floorZ },
+      coordinateSystem,
+    );
+
+    return new THREE.Vector3(world.x, world.y, world.z + ROBOT_TRAIL_Z_OFFSET);
+  });
+}
+
+function createLineGeometryFromPoints(points: THREE.Vector3[]) {
+  const geometry = new THREE.BufferGeometry();
+
+  if (points.length === 0) {
+    geometry.setFromPoints([]);
+  } else if (points.length === 1) {
+    geometry.setFromPoints([points[0], points[0]]);
+  } else {
+    geometry.setFromPoints(points);
+  }
+
+  return geometry;
+}
+
+function createRobotTrail(
+  config: RobotConfig,
+  floorZ: number,
+  startPosition: THREE.Vector3,
+): RobotTrailRuntime {
+  const color = getRobotColor(config);
+  const group = new THREE.Group();
+  group.name = `trail:${config.id}`;
+
+  const plannedPoints = getRobotPathWorldPoints(config, floorZ);
+
+  const plannedGeometry = createLineGeometryFromPoints(plannedPoints);
+  const activeGeometry = createLineGeometryFromPoints([
+    withTrailOffset(startPosition),
+    withTrailOffset(startPosition),
+  ]);
+
+  const plannedMaterial = new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.25,
+    depthWrite: false,
+  });
+
+  const activeMaterial = new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+  });
+
+  const plannedLine = new THREE.Line(plannedGeometry, plannedMaterial);
+  const activeLine = new THREE.Line(activeGeometry, activeMaterial);
+
+  plannedLine.name = `planned-path:${config.id}`;
+  activeLine.name = `active-trail:${config.id}`;
+
+  plannedLine.renderOrder = 2;
+  activeLine.renderOrder = 3;
+
+  group.add(plannedLine);
+  group.add(activeLine);
+
+  const startPoint = withTrailOffset(startPosition);
+
+  return {
+    group,
+    plannedLine,
+    activeLine,
+    plannedMaterial,
+    activeMaterial,
+    plannedGeometry,
+    activeGeometry,
+    visitedPoints: [startPoint.clone()],
+    lastSampledPoint: startPoint.clone(),
+  };
+}
+
+function disposeRobotTrail(trail: RobotTrailRuntime) {
+  trail.plannedGeometry.dispose();
+  trail.activeGeometry.dispose();
+  trail.plannedMaterial.dispose();
+  trail.activeMaterial.dispose();
+}
+
+function resetRobotTrail(robot: RobotRuntime) {
+  if (!robot.trail) return;
+
+  const startPoint = withTrailOffset(robot.root.position);
+
+  robot.trail.visitedPoints = [startPoint.clone()];
+  robot.trail.lastSampledPoint.copy(startPoint);
+  robot.trail.activeGeometry.setFromPoints([startPoint, startPoint]);
+  robot.trail.activeGeometry.computeBoundingSphere();
+}
+
+function updateRobotTrail(robot: RobotRuntime) {
+  if (!robot.trail) return;
+
+  const currentPoint = withTrailOffset(robot.root.position);
+  const distance = currentPoint.distanceTo(robot.trail.lastSampledPoint);
+
+  if (distance < ROBOT_TRAIL_SAMPLE_DISTANCE) return;
+
+  robot.trail.visitedPoints.push(currentPoint.clone());
+  robot.trail.lastSampledPoint.copy(currentPoint);
+
+  robot.trail.activeGeometry.setFromPoints(robot.trail.visitedPoints);
+  robot.trail.activeGeometry.computeBoundingSphere();
+}
+
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
@@ -580,7 +744,10 @@ function disposeObject3D(root: THREE.Object3D) {
         ? child.material
         : [child.material];
       materials.forEach((material) => material.dispose());
-    } else if (child instanceof THREE.LineSegments) {
+    } else if (
+      child instanceof THREE.Line ||
+      child instanceof THREE.LineSegments
+    ) {
       child.geometry.dispose();
       const materials = Array.isArray(child.material)
         ? child.material
@@ -836,6 +1003,12 @@ export function SceneViewer() {
 
       scene.remove(robot.root);
       disposeObject3D(robot.root);
+
+      if (robot.trail) {
+        scene.remove(robot.trail.group);
+        disposeRobotTrail(robot.trail);
+      }
+
       robots.delete(id);
     };
 
@@ -859,6 +1032,8 @@ export function SceneViewer() {
       root.rotation.z = config.rotationZ ?? 0;
 
       scene.add(root);
+      const trail = createRobotTrail(config, floorZ, root.position);
+      scene.add(trail.group);
 
       const runtime: RobotRuntime = {
         id: config.id,
@@ -869,6 +1044,8 @@ export function SceneViewer() {
         status: config.enabled === false ? 'disabled' : 'idle',
         lastConfigPositionKey: coordKey(config.position),
         lastConfigPathKey: pathKey(config.path),
+        lastConfigTrailKey: robotTrailKey(config),
+        trail,
       };
 
       robots.set(config.id, runtime);
@@ -906,6 +1083,21 @@ export function SceneViewer() {
         if (nextPathKey !== existing.lastConfigPathKey) {
           existing.pathIndex = getInitialPathIndex(config);
           existing.lastConfigPathKey = nextPathKey;
+        }
+
+        const nextTrailKey = robotTrailKey(config);
+        if (nextTrailKey !== existing.lastConfigTrailKey) {
+          if (existing.trail) {
+            scene.remove(existing.trail.group);
+            disposeRobotTrail(existing.trail);
+          }
+          existing.trail = createRobotTrail(
+            config,
+            floorZ,
+            existing.root.position,
+          );
+          scene.add(existing.trail.group);
+          existing.lastConfigTrailKey = nextTrailKey;
         }
 
         const nextPositionKey = coordKey(config.position);
@@ -950,6 +1142,8 @@ export function SceneViewer() {
         robot.pathIndex = getInitialPathIndex(robot.config);
         robot.blockedBy = undefined;
         robot.status = robot.config.enabled === false ? 'disabled' : 'idle';
+
+        resetRobotTrail(robot);
       }
 
       publishRobotStatuses(true);
@@ -993,6 +1187,7 @@ export function SceneViewer() {
 
         if (distance <= ROBOT_ARRIVAL_EPSILON) {
           robot.root.position.set(target.x, target.y, target.z);
+          updateRobotTrail(robot);
 
           const pathLength = robot.config.path?.length ?? 0;
           if (pathLength > 0) {
@@ -1020,7 +1215,8 @@ export function SceneViewer() {
         robot.root.position.addScaledVector(direction, step);
 
         if (Math.abs(direction.x) > 0.001 || Math.abs(direction.y) > 0.001) {
-          robot.root.rotation.z = Math.atan2(direction.y, direction.x);
+          robot.root.rotation.z =
+            Math.atan2(direction.y, direction.x) + ROBOT_HEADING_OFFSET_Z;
         }
 
         const blockedBy = findRobotCollision(robot);
@@ -1031,6 +1227,8 @@ export function SceneViewer() {
         } else {
           robot.status = 'moving';
         }
+
+        updateRobotTrail(robot);
       }
 
       publishRobotStatuses();
