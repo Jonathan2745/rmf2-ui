@@ -72,9 +72,7 @@ export class PoseSimulator {
       if (this.currentSegment >= this.segmentCount - 1) {
         this.segmentProgress = 1;
         this.arrived = true;
-        this.callbacks.onArrived?.(
-          this.pathIds[this.pathIds.length - 1],
-        );
+        this.callbacks.onArrived?.(this.pathIds[this.pathIds.length - 1]);
         break;
       }
 
