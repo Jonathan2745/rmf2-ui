@@ -22,6 +22,7 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { ViewportGizmo } from 'three-viewport-gizmo';
 import { Tooltip } from '@/components/ui/tooltip';
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 // import {
 //   ROBOT_TURN_SPEED_RAD,
@@ -29,10 +30,25 @@ import { Tooltip } from '@/components/ui/tooltip';
 //   type DriveState,
 // } from '../differential-drive.demo';
 import { type DriveState } from '../differential-drive.demo';
+=======
+>>>>>>> 60c350e (feat(refactor): abstracted data types to robot-types.tsx)
 
 >>>>>>> 5c325b1 (feat(frontend): fixed robot pathing and heading when stopped)
 import { DropPointMarker } from '../drop-point-marker';
 import { NavigationOverlay } from '../navigation-overlay';
+
+import {
+  type CameraFrame,
+  type RobotConfig,
+  type RobotCoordinateSystem,
+  type RobotWaypoint,
+  type RobotRuntime,
+  type RobotStatus,
+  type SceneViewerApi,
+  type SceneBounds,
+  type DropPointCoords,
+  type StaticCollisionBox,
+} from './robot-types';
 
 const SCENE_URL = '/RMF2_SIM/Test_3.glb';
 const ROBOT_MODEL_URL = '/robot.glb';
@@ -63,6 +79,7 @@ const ROBOT_TRAIL_Z_OFFSET = 0.08;
 const ROBOT_TRAIL_SAMPLE_DISTANCE = 0.25;
 const DEFAULT_ROBOT_COLOR = '#00A3FF';
 
+<<<<<<< HEAD
 type LoadState = 'loading' | 'ready' | 'error';
 
 type CameraFrame = {
@@ -166,6 +183,8 @@ type SceneViewerApi = {
   setRoofSliceHeight: (height: number) => void;
 };
 
+=======
+>>>>>>> 60c350e (feat(refactor): abstracted data types to robot-types.tsx)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -1172,6 +1191,7 @@ export function SceneViewer() {
             floorZ,
             existing.root.position,
           );
+
           scene.add(existing.trail.group);
           existing.lastConfigTrailKey = nextTrailKey;
         }
@@ -1267,28 +1287,6 @@ export function SceneViewer() {
         const previousPosition = robot.root.position.clone();
         const previousHeading =
           robot.root.rotation.z + ROBOT_MODEL_HEADING_OFFSET;
-        // const spawnHeading = robot.config.rotationZ ?? previousHeading;
-
-        // const stepResult = stepDifferentialDrive({
-        //   position: { x: previousPosition.x, y: previousPosition.y },
-        //   z: target.z,
-        //   target: { x: target.x, y: target.y },
-        //   state: robot.driveState,
-        //   initialHeading: spawnHeading,
-        //   speed: Math.max(robot.config.speed ?? 1, 0),
-        //   turnSpeed: ROBOT_TURN_SPEED_RAD,
-        //   arrivalEpsilon: ROBOT_ARRIVAL_EPSILON,
-        //   deltaSeconds,
-        // });
-
-        // robot.root.position.set(
-        //   stepResult.position.x,
-        //   stepResult.position.y,
-        //   stepResult.z,
-        // );
-        // robot.root.rotation.z = stepResult.heading;
-        // robot.driveState = stepResult.state;
-
         const stepResult = stepDirectlyTowardWaypoint({
           current: previousPosition,
           target,
