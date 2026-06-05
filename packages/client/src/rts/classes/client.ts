@@ -4,7 +4,11 @@ import type {
   ClientOptions as ClientOptionsGen,
 } from '@/rts/generated/client';
 import type { Task as TaskPayload } from '@/rts/generated/types.gen';
-import { readScheduleScheduleGet } from '@/rts/generated/sdk.gen';
+import {
+  readScheduleScheduleGet,
+  deleteTaskTasksUuidDelete,
+  optimizeScheduleScheduleOptimizePost,
+} from '@/rts/generated/sdk.gen';
 import { createClient } from '@/rts/generated/client';
 
 export type ClientOptions = ClientOptionsGen;
@@ -40,6 +44,7 @@ export class Client {
       actualEndTime: payload.actual_end_time
         ? new Date(payload.actual_end_time)
         : undefined,
+      deadline: payload.deadline ? new Date(payload.deadline) : undefined,
       taskDetails: payload.task_details,
     };
     return task;
@@ -78,5 +83,40 @@ export class Client {
       processes: data.processes,
     };
     return result;
+  }
+
+  async deleteTask(params: { uuid: string }): Promise<string> {
+    const { uuid } = params;
+    const { data, error } = await deleteTaskTasksUuidDelete({
+      client: this._client,
+      path: {
+        uuid: uuid,
+      },
+    });
+
+    if (error) {
+      throw error.detail;
+    }
+
+    if (data === undefined) {
+      throw ReferenceError('Error: data is undefined.');
+    }
+    return data.message;
+  }
+
+  async optimize(params: { optimizationDuration: number }): Promise<string> {
+    const { optimizationDuration } = params;
+    const { data } = await optimizeScheduleScheduleOptimizePost({
+      client: this._client,
+      query: {
+        optimization_duration: optimizationDuration,
+      },
+    });
+
+    if (data === undefined) {
+      throw ReferenceError('Error: data is undefined.');
+    }
+
+    return data.message;
   }
 }

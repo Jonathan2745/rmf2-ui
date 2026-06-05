@@ -133,9 +133,13 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-
 # pnpm
 .pnpm-store
 
+apartment_floor_plan
+.DS_Store
+.cursor
+
 # IDE / agent
+.agents
 .agent*
