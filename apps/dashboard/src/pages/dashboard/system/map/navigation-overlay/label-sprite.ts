@@ -47,8 +47,7 @@ export function createLabelSprite(
   sprite.onBeforeRender = (renderer, _scene, camera) => {
     const distance = sprite.position.distanceTo(camera.position);
     const fov = (camera as THREE.PerspectiveCamera).fov ?? 45;
-    const vHeight =
-      2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2) * distance;
+    const vHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2) * distance;
     const pxPerWorld = renderer.domElement.clientHeight / vHeight;
     const baseScreenPx = baseY * pxPerWorld;
 

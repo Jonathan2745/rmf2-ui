@@ -24,10 +24,7 @@ function orientCylinderBetween(
 
   const midpoint = start.clone().add(end).multiplyScalar(0.5);
   mesh.position.copy(midpoint);
-  mesh.quaternion.setFromUnitVectors(
-    CYLINDER_AXIS,
-    direction.normalize(),
-  );
+  mesh.quaternion.setFromUnitVectors(CYLINDER_AXIS, direction.normalize());
   mesh.scale.set(1, length, 1);
 }
 
