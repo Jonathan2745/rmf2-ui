@@ -48,6 +48,9 @@ import {
   type SceneBounds,
   type DropPointCoords,
   type StaticCollisionBox,
+  type RobotTrailRuntime,
+  type SceneDebugInfo,
+  type LoadState,
 } from './robot-types';
 
 const SCENE_URL = '/RMF2_SIM/Test_3.glb';
