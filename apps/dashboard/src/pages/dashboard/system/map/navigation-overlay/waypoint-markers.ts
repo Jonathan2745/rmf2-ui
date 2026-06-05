@@ -35,7 +35,10 @@ export function createWaypointMarkers(
         roughness: 0.55,
       }),
     );
-    mesh.userData = { waypointId: point.id, isWaypoint: true } satisfies WaypointUserData;
+    mesh.userData = {
+      waypointId: point.id,
+      isWaypoint: true,
+    } satisfies WaypointUserData;
 
     group.add(mesh);
 

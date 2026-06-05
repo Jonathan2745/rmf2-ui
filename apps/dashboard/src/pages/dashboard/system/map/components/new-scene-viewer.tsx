@@ -807,6 +807,8 @@ import {
   ROBOT_CONFIG_REFRESH_MS,
   ROBOT_MODEL_URL,
   SCENE_URL,
+  INITIAL_SHOW_ROOF_SLICE,
+  INITIAL_ROOF_SLICE_HEIGHT,
 } from './constants';
 
 import { fetchRobotConfigs } from './robot-map-config/robot-config-api';
@@ -870,8 +872,10 @@ export function SceneViewer() {
   const [showGridAxes, setShowGridAxes] = useState(false);
   const [showNavigation, setShowNavigation] = useState(true);
   const [showDropPoint, setShowDropPoint] = useState(false);
-  const [showRoofSlice, setShowRoofSlice] = useState(true);
-  const [roofSliceHeight, setRoofSliceHeight] = useState(3.4);
+  const [showRoofSlice, setShowRoofSlice] = useState(INITIAL_SHOW_ROOF_SLICE);
+  const [roofSliceHeight, setRoofSliceHeight] = useState(
+    INITIAL_ROOF_SLICE_HEIGHT,
+  );
 
   const [dropPoint, setDropPoint] = useState<DropPointCoords>({
     x: 0,
@@ -940,10 +944,10 @@ export function SceneViewer() {
 
     const roofClipPlane = new THREE.Plane(
       new THREE.Vector3(0, 0, -1),
-      roofSliceHeight,
+      INITIAL_ROOF_SLICE_HEIGHT,
     );
 
-    renderer.clippingPlanes = showRoofSlice ? [roofClipPlane] : [];
+    renderer.clippingPlanes = INITIAL_SHOW_ROOF_SLICE ? [roofClipPlane] : [];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
