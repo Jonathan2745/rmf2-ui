@@ -1,5 +1,5 @@
 import { Icon } from '@chakra-ui/react';
-import { MdDashboard, MdEventNote, MdHome, MdMap } from 'react-icons/md';
+import { MdDashboard, MdEventNote, MdHome } from 'react-icons/md';
 import { FaNetworkWired } from 'react-icons/fa';
 import { SiUnrealengine } from 'react-icons/si';
 import { GrSchedules } from 'react-icons/gr';
@@ -49,11 +49,6 @@ export const routes: DashboardRoute[] = [
         path: '/system/simulation',
         description:
           'Onboard devices and services, run UE5 simulation via the Python launcher API.',
-      },
-      {
-        name: 'Map',
-        path: '/system/map',
-        icon: <Icon as={MdMap} width="20px" height="30px" color="inherit" />,
       },
     ],
   },

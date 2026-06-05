@@ -1,6 +1,6 @@
 import type { RouteObject } from 'react-router';
 import { HomeRedirect } from './home-redirect';
-import { NotFoundRedirect } from './not-found-redirect';
+import { NotFound } from './not-found';
 
 export const AdminRoutes: RouteObject[] = [
   {
@@ -12,44 +12,20 @@ export const AdminRoutes: RouteObject[] = [
     },
   },
   {
-    // System
-    path: 'system',
-    children: [
-      // System Home
-      {
-        index: true,
-        lazy: async () => {
-          const { Home } = await import('@/pages/dashboard/home');
-          return { Component: Home };
-        },
-      },
-      {
-        // Network
-        path: 'network',
-        lazy: async () => {
-          const { Network } = await import('@/pages/dashboard/system/network');
-          return { Component: Network };
-        },
-      },
-      {
-        // Simulation
-        path: 'simulation',
-        lazy: async () => {
-          const { Simulation } = await import(
-            '@/pages/dashboard/system/simulation'
-          );
-          return { Component: Simulation };
-        },
-      },
-      {
-        // Map
-        path: 'map',
-        lazy: async () => {
-          const { Map } = await import('@/pages/dashboard/system/map');
-          return { Component: Map };
-        },
-      },
-    ],
+    path: 'system/network',
+    lazy: async () => {
+      const { Network } = await import('@/pages/dashboard/system/network');
+      return { Component: Network };
+    },
+  },
+  {
+    path: 'system/simulation',
+    lazy: async () => {
+      const { Simulation } = await import(
+        '@/pages/dashboard/system/simulation'
+      );
+      return { Component: Simulation };
+    },
   },
   {
     path: 'operation/schedule',
@@ -75,7 +51,7 @@ export const dashboardRoutes: RouteObject[] = [
   },
   {
     path: '*',
-    Component: NotFoundRedirect,
+    Component: NotFound,
   },
 ];
 

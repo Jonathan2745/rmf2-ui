@@ -152,39 +152,6 @@
         }
       }
     },
-    "/schedule/optimize": {
-      "post": {
-        "tags": ["Schedule"],
-        "summary": "Optimize Schedule",
-        "operationId": "optimize_schedule_schedule_optimize_post",
-        "parameters": [
-          {
-            "name": "optimization_duration",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "number", "title": "Optimization Duration" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Message" }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
-              }
-            }
-          }
-        }
-      }
-    },
     "/tasks/": {
       "get": {
         "tags": ["Task"],
