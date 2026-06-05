@@ -106,3 +106,11 @@ export type SceneViewerApi = {
   setRoofSliceEnabled: (enabled: boolean) => void;
   setRoofSliceHeight: (height: number) => void;
 };
+
+export type RobotSyncContext = {
+  scene: THREE.Scene;
+  robots: Map<string, RobotRuntime>;
+  template: THREE.Group;
+  floorZ: number;
+  publishRobotStatuses: (force?: boolean) => void;
+};

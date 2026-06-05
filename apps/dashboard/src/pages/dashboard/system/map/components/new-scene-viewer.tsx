@@ -4,13 +4,10 @@ import {
   Button,
   Card,
   Center,
-  Field,
   HStack,
   IconButton,
-  Input,
   Kbd,
   Stack,
-  Switch,
   Text,
 } from '@chakra-ui/react';
 import { LuLocateFixed, LuRotateCcw } from 'react-icons/lu';
@@ -18,8 +15,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { ViewportGizmo } from 'three-viewport-gizmo';
+<<<<<<< HEAD
 import { Tooltip } from '@/components/ui/tooltip';
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -34,25 +31,24 @@ import { type DriveState } from '../differential-drive.demo';
 >>>>>>> 60c350e (feat(refactor): abstracted data types to robot-types.tsx)
 
 >>>>>>> 5c325b1 (feat(frontend): fixed robot pathing and heading when stopped)
+=======
+
+import { Tooltip } from '@/components/ui/tooltip';
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
 import { DropPointMarker } from '../drop-point-marker';
 import { NavigationOverlay } from '../navigation-overlay';
 
-import {
-  type CameraFrame,
-  type RobotConfig,
-  type RobotCoordinateSystem,
-  type RobotWaypoint,
-  type RobotRuntime,
-  type RobotStatus,
-  type SceneViewerApi,
-  type SceneBounds,
-  type DropPointCoords,
-  type StaticCollisionBox,
-  type RobotTrailRuntime,
-  type SceneDebugInfo,
-  type LoadState,
+import type {
+  DropPointCoords,
+  LoadState,
+  RobotRuntime,
+  RobotStatus,
+  SceneDebugInfo,
+  SceneViewerApi,
+  StaticCollisionBox,
 } from './robot-types';
 
+<<<<<<< HEAD
 const SCENE_URL = '/RMF2_SIM/Test_3.glb';
 const ROBOT_MODEL_URL = '/robot.glb';
 // const ROBOTS_CONFIG_URL = '/robots.json';
@@ -804,166 +800,94 @@ function toSceneDebugInfo(bounds: SceneBounds): SceneDebugInfo {
     max: { x: bounds.max.x, y: bounds.max.y, z: bounds.max.z },
   };
 }
+=======
+import {
+  DRACO_DECODER_PATH,
+  ROBOT_ARRIVAL_EPSILON,
+  ROBOT_CONFIG_REFRESH_MS,
+  ROBOT_MODEL_URL,
+  SCENE_URL,
+} from './constants';
+
+import { fetchRobotConfigs } from './robot-map-config/robot-config-api';
+
+// import { getInitialRobotPosition } from './robot-map-coordinates/robot-position';
+import { getActiveRobotTarget } from './robot-map-coordinates/waypoint-utils';
+
+import { stepDirectlyTowardWaypoint } from './robot-map-motion/direct-waypoint-motion';
+import {
+  movementHeadingToModelHeading,
+  modelHeadingToMovementHeading,
+} from './robot-map-motion/robot-heading';
+
+import { toRobotStatus } from './robot-map-runtime/robot-status';
+import { tuneMaterials } from './robot-map-runtime/robot-runtime-utils';
+
+import {
+  removeRobot,
+  syncRobotsFromConfig,
+} from './robot-map-runtime/robot-sync';
+
+import { updateRobotTrail } from './robot-map-draw-trail/robot-trail';
+
+import { loadGltfAsync } from './robot-map-scene/gltf-loader';
+import {
+  computeSceneBounds,
+  toSceneDebugInfo,
+} from './robot-map-scene/scene-bounds';
+import {
+  animateIntroCamera,
+  computeCameraFrame,
+  frameCamera,
+} from './robot-map-scene/scene-camera';
+import {
+  collectStaticCollisionBoxes,
+  findRobotCollision,
+} from './robot-map-scene/scene-collision';
+import { disposeObject3D } from './robot-map-scene/scene-dispose';
+import { createGridAxesHelpers } from './robot-map-scene/scene-grid-axis';
+
+import { SceneControlPanel } from './ui/scene-control-panel';
+import { DropPointPanel } from './ui/drop-point-panel';
+import { RobotStatusPanel } from './ui/robot-status-panel';
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
 
 function formatCoord(value: number) {
   return value.toFixed(3);
 }
 
-function createGridAxesHelpers(bounds: SceneBounds) {
-  const size = bounds.max.clone().sub(bounds.min);
-  // Z-up: floor is the XY plane, so the grid extent should span X and Y.
-  const gridExtent = Math.max(size.x, size.y) * 1.25;
-  const divisions = Math.max(10, Math.round(gridExtent / 2));
-
-  const grid = new THREE.GridHelper(gridExtent, divisions, 0x888888, 0xcccccc);
-  // GridHelper is authored in the XZ plane; rotate it into XY for a Z-up scene.
-  grid.rotation.x = Math.PI / 2;
-  const axes = new THREE.AxesHelper(bounds.maxDim * 0.35);
-
-  const group = new THREE.Group();
-  group.add(grid, axes);
-  group.position.set(
-    (bounds.min.x + bounds.max.x) / 2,
-    (bounds.min.y + bounds.max.y) / 2,
-    bounds.floorZ,
-  );
-  group.visible = false;
-
-  return group;
-}
-
-function disposeObject3D(root: THREE.Object3D) {
-  root.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      child.geometry.dispose();
-      const materials = Array.isArray(child.material)
-        ? child.material
-        : [child.material];
-      materials.forEach((material) => material.dispose());
-    } else if (
-      child instanceof THREE.LineSegments ||
-      child instanceof THREE.Line
-    ) {
-      child.geometry.dispose();
-      const materials = Array.isArray(child.material)
-        ? child.material
-        : [child.material];
-      materials.forEach((material) => material.dispose());
-    }
-  });
-}
-
-function computeCameraFrame(root: THREE.Object3D): CameraFrame {
-  const box = new THREE.Box3().setFromObject(root);
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const sphere = box.getBoundingSphere(new THREE.Sphere());
-
-  const startDistance = maxDim * INTRO_START_DISTANCE_FACTOR;
-  const endDistance = maxDim * END_DISTANCE_FACTOR;
-
-  // Z-up: intro starts straight overhead (high +Z) and ends at an angled view
-  // offset along -Y so that +Y projects "up" on screen.
-  return {
-    center,
-    maxDim,
-    sphereRadius: sphere.radius,
-    startPosition: new THREE.Vector3(
-      center.x,
-      center.y,
-      center.z + startDistance,
-    ),
-    endPosition: new THREE.Vector3(
-      center.x,
-      center.y - endDistance * Math.sin(END_VIEW_ANGLE),
-      center.z + endDistance * Math.cos(END_VIEW_ANGLE),
-    ),
-  };
-}
-
-function applyCameraFrame(
-  camera: THREE.PerspectiveCamera,
-  controls: OrbitControls,
-  frame: CameraFrame,
-  position: THREE.Vector3,
-) {
-  // Tight near/far improves depth precision and reduces z-fighting.
-  camera.near = Math.max(frame.sphereRadius / 500, 0.05);
-  camera.far = frame.sphereRadius * 20;
-  camera.updateProjectionMatrix();
-
-  controls.target.copy(frame.center);
-  controls.minDistance = frame.maxDim * 0.15;
-  controls.maxDistance = frame.maxDim * 4;
-  camera.position.copy(position);
-  camera.lookAt(frame.center);
-  controls.update();
-}
-
-function frameCamera(
-  camera: THREE.PerspectiveCamera,
-  controls: OrbitControls,
-  root: THREE.Object3D,
-) {
-  const frame = computeCameraFrame(root);
-  applyCameraFrame(camera, controls, frame, frame.endPosition);
-}
-
-function animateIntroCamera(
-  camera: THREE.PerspectiveCamera,
-  controls: OrbitControls,
-  frame: CameraFrame,
-  isDisposed: () => boolean,
-) {
-  applyCameraFrame(camera, controls, frame, frame.startPosition);
-
-  const startTime = performance.now();
-  const from = frame.startPosition.clone();
-
-  const tick = (now: number) => {
-    if (isDisposed()) return;
-
-    const t = Math.min((now - startTime) / INTRO_DURATION_MS, 1);
-    const eased = easeInOutCubic(t);
-
-    camera.position.lerpVectors(from, frame.endPosition, eased);
-    camera.lookAt(frame.center);
-    controls.update();
-
-    if (t < 1) {
-      requestAnimationFrame(tick);
-    } else {
-      applyCameraFrame(camera, controls, frame, frame.endPosition);
-    }
-  };
-
-  requestAnimationFrame(tick);
-}
-
 export function SceneViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
+
   const resetOrbitRef = useRef<(() => void) | null>(null);
   const resetPathRef = useRef<(() => void) | null>(null);
   const resetRobotsRef = useRef<(() => void) | null>(null);
   const sceneApiRef = useRef<SceneViewerApi | null>(null);
+
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [showGridAxes, setShowGridAxes] = useState(false);
   const [showNavigation, setShowNavigation] = useState(true);
   const [showDropPoint, setShowDropPoint] = useState(false);
+  const [showRoofSlice, setShowRoofSlice] = useState(true);
+  const [roofSliceHeight, setRoofSliceHeight] = useState(3.4);
+
   const [dropPoint, setDropPoint] = useState<DropPointCoords>({
     x: 0,
     y: 0,
     z: 0,
   });
+
   const [sceneDebug, setSceneDebug] = useState<SceneDebugInfo | null>(null);
   const [robotStatuses, setRobotStatuses] = useState<RobotStatus[]>([]);
+<<<<<<< HEAD
   const showNavigationRef = useRef(showNavigation);
+=======
+
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
   const showDropPointRef = useRef(showDropPoint);
   const dropPointRef = useRef(dropPoint);
-  const [showRoofSlice, setShowRoofSlice] = useState(true);
-  const [roofSliceHeight, setRoofSliceHeight] = useState(3.4);
 
   showNavigationRef.current = showNavigation;
   showDropPointRef.current = showDropPoint;
@@ -999,10 +923,12 @@ export function SceneViewer() {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
+
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-    // Z-up scene: orbit controls, gizmo, and projection all treat +Z as vertical.
+
     const previousDefaultUp = THREE.Object3D.DEFAULT_UP.clone();
     THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
     camera.up.set(0, 0, 1);
     camera.position.set(5, -5, 5);
 
@@ -1017,9 +943,10 @@ export function SceneViewer() {
       roofSliceHeight,
     );
 
-    renderer.clippingPlanes = [];
+    renderer.clippingPlanes = showRoofSlice ? [roofClipPlane] : [];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+
     container.appendChild(renderer.domElement);
 
     const clock = new THREE.Clock();
@@ -1033,12 +960,13 @@ export function SceneViewer() {
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
+    controls.zoomSpeed = 2.5;
 
     const gizmo = new ViewportGizmo(camera, renderer, {
       container: renderer.domElement.parentElement ?? container,
     });
+
     gizmo.attachControls(controls);
-    controls.zoomSpeed = 2.5;
 
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath(DRACO_DECODER_PATH);
@@ -1048,51 +976,38 @@ export function SceneViewer() {
 
     let animationFrameId = 0;
     let disposed = false;
+
     let loadedScene: THREE.Group | null = null;
     let gridAxesHelpers: THREE.Group | null = null;
     let navigationOverlay: NavigationOverlay | null = null;
     let dropPointMarker: DropPointMarker | null = null;
-    const pickRaycaster = new THREE.Raycaster();
-    const pickPointer = new THREE.Vector2();
-    const robots = new Map<string, RobotRuntime>();
     let robotTemplate: THREE.Group | null = null;
-    let staticCollisionBoxes: StaticCollisionBox[] = [];
+
     let robotConfigTimerId: number | null = null;
+    let staticCollisionBoxes: StaticCollisionBox[] = [];
     let lastRobotStatusPublish = 0;
     let currentFloorZ = 0;
 
-    const findRobotCollision = (robot: RobotRuntime) => {
-      const robotBox = getObjectBox(robot.root);
+    const robots = new Map<string, RobotRuntime>();
 
-      for (const obstacle of staticCollisionBoxes) {
-        if (robotBox.intersectsBox(obstacle.box)) {
-          return obstacle.name;
-        }
-      }
-
-      for (const otherRobot of robots.values()) {
-        if (otherRobot.id === robot.id) continue;
-        if (robotBox.intersectsBox(getObjectBox(otherRobot.root))) {
-          return otherRobot.name;
-        }
-      }
-
-      return undefined;
-    };
+    const pickRaycaster = new THREE.Raycaster();
+    const pickPointer = new THREE.Vector2();
 
     const publishRobotStatuses = (force = false) => {
       const now = performance.now();
+
       if (!force && now - lastRobotStatusPublish < 250) return;
 
       lastRobotStatusPublish = now;
-      const floorZ = currentFloorZ;
+
       setRobotStatuses(
         Array.from(robots.values()).map((robot) =>
-          toRobotStatus(robot, floorZ),
+          toRobotStatus(robot, currentFloorZ),
         ),
       );
     };
 
+<<<<<<< HEAD
     const removeRobot = (id: string) => {
       const robot = robots.get(id);
       if (!robot) return;
@@ -1252,13 +1167,26 @@ export function SceneViewer() {
 
     resetRobotsRef.current = resetAllRobotsToStart;
 
+=======
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
     const refreshRobotConfig = async (floorZ: number) => {
-      if (!robotTemplate) return;
+      const template = robotTemplate;
+
+      if (!template) return;
 
       try {
         const configs = await fetchRobotConfigs();
+
         if (disposed) return;
-        syncRobotsFromConfig(configs, robotTemplate, floorZ);
+
+        syncRobotsFromConfig({
+          configs,
+          scene,
+          robots,
+          template,
+          floorZ,
+          publishRobotStatuses,
+        });
       } catch (robotConfigError) {
         console.error('Robot config failed to load', robotConfigError);
       }
@@ -1279,6 +1207,7 @@ export function SceneViewer() {
 
         const { target } = activeTarget;
 <<<<<<< HEAD
+<<<<<<< HEAD
         const current = robot.root.position.clone();
         const delta = new THREE.Vector3(
           target.x - current.x,
@@ -1287,27 +1216,39 @@ export function SceneViewer() {
         );
         const distance = delta.length();
 =======
+=======
+
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
         const previousPosition = robot.root.position.clone();
-        const previousHeading =
-          robot.root.rotation.z + ROBOT_MODEL_HEADING_OFFSET;
+        const previousModelHeading = robot.root.rotation.z;
+        const previousMovementHeading =
+          modelHeadingToMovementHeading(previousModelHeading);
+
         const stepResult = stepDirectlyTowardWaypoint({
           current: previousPosition,
           target,
           speed: Math.max(robot.config.speed ?? 1, 0),
           deltaSeconds,
           arrivalEpsilon: ROBOT_ARRIVAL_EPSILON,
-          previousHeading,
+          previousHeading: previousMovementHeading,
         });
 
         robot.root.position.copy(stepResult.position);
-        robot.root.rotation.z = stepResult.heading + ROBOT_MODEL_HEADING_OFFSET;
+        robot.root.rotation.z = movementHeadingToModelHeading(
+          stepResult.heading,
+        );
+
         robot.driveState = null;
 
-        const blockedBy = findRobotCollision(robot);
+        const blockedBy = findRobotCollision({
+          robot,
+          robots,
+          staticCollisionBoxes,
+        });
 
         if (blockedBy) {
           robot.root.position.copy(previousPosition);
-          robot.root.rotation.z = previousHeading;
+          robot.root.rotation.z = previousModelHeading;
           robot.driveState = null;
           robot.blockedBy = blockedBy;
           robot.status = 'blocked';
@@ -1315,9 +1256,13 @@ export function SceneViewer() {
         }
 >>>>>>> 5c325b1 (feat(frontend): fixed robot pathing and heading when stopped)
 
+<<<<<<< HEAD
         if (distance <= ROBOT_ARRIVAL_EPSILON) {
           robot.root.position.set(target.x, target.y, target.z);
 
+=======
+        if (stepResult.arrived) {
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
           const pathLength = robot.config.path?.length ?? 0;
 
           if (pathLength > 0) {
@@ -1361,6 +1306,7 @@ export function SceneViewer() {
 =======
         robot.status = 'moving';
         updateRobotTrail(robot);
+<<<<<<< HEAD
 
         // if (stepResult.arrived) {
         //   robot.driveState = null;
@@ -1396,24 +1342,30 @@ export function SceneViewer() {
 
         // updateRobotTrail(robot);
 >>>>>>> 5c325b1 (feat(frontend): fixed robot pathing and heading when stopped)
+=======
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
       }
 
       publishRobotStatuses();
     };
 
     const onDropPointPointerDown = (event: PointerEvent) => {
-      if (!showDropPointRef.current || !event.altKey || !dropPointMarker)
+      if (!showDropPointRef.current || !event.altKey || !dropPointMarker) {
         return;
+      }
 
       const rect = renderer.domElement.getBoundingClientRect();
+
       pickPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pickPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
       pickRaycaster.setFromCamera(pickPointer, camera);
 
       const picked = dropPointMarker.pickOnPlane(
         pickRaycaster,
         dropPointRef.current.z,
       );
+
       if (!picked) return;
 
       dropPointRef.current = picked;
@@ -1424,10 +1376,12 @@ export function SceneViewer() {
     const resize = () => {
       const width = container.clientWidth;
       const height = container.clientHeight;
+
       if (width === 0 || height === 0) return;
 
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+
       renderer.setSize(width, height);
       gizmo.update();
     };
@@ -1440,17 +1394,23 @@ export function SceneViewer() {
 
     const animate = () => {
       if (disposed) return;
+
       animationFrameId = requestAnimationFrame(animate);
+
       const deltaSeconds = clock.getDelta();
 
       controls.update();
+<<<<<<< HEAD
       navigationOverlay?.tick(deltaSeconds);
 
+=======
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
       updateRobots(deltaSeconds, currentFloorZ);
 
       renderer.render(scene, camera);
       gizmo.render();
     };
+
     animate();
 
     loader.load(
@@ -1459,17 +1419,21 @@ export function SceneViewer() {
         if (disposed) return;
 
         loadedScene = gltf.scene;
-        // GLTF is Y-up by spec; rotate to Z-up world convention (+Z vertical).
+
+        // GLTF is usually Y-up; rotate to Z-up world convention.
         gltf.scene.rotation.x = Math.PI / 2;
+
         tuneMaterials(gltf.scene);
         scene.add(gltf.scene);
 
         const bounds = computeSceneBounds(gltf.scene);
         currentFloorZ = bounds.floorZ;
+
         staticCollisionBoxes = collectStaticCollisionBoxes(
           gltf.scene,
           bounds.floorZ,
         );
+
         gridAxesHelpers = createGridAxesHelpers(bounds);
         scene.add(gridAxesHelpers);
 
@@ -1481,26 +1445,36 @@ export function SceneViewer() {
           y: (bounds.min.y + bounds.max.y) / 2,
           z: bounds.floorZ,
         };
+
         dropPointRef.current = initialDrop;
         dropPointMarker.setPosition(initialDrop);
         setDropPoint(initialDrop);
 
         sceneApiRef.current = {
           setShowGridAxes(show) {
-            if (gridAxesHelpers) gridAxesHelpers.visible = show;
+            if (gridAxesHelpers) {
+              gridAxesHelpers.visible = show;
+            }
           },
+<<<<<<< HEAD
           setNavigationEnabled(enabled) {
             navigationOverlay?.setEnabled(enabled);
           },
+=======
+
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
           setDropPointEnabled(enabled) {
             dropPointMarker?.setVisible(enabled);
           },
+
           setDropPointPosition(position) {
             dropPointMarker?.setPosition(position);
           },
+
           setRoofSliceEnabled(enabled) {
             renderer.clippingPlanes = enabled ? [roofClipPlane] : [];
           },
+
           setRoofSliceHeight(height) {
             roofClipPlane.constant = height;
           },
@@ -1509,6 +1483,7 @@ export function SceneViewer() {
         setSceneDebug(toSceneDebugInfo(bounds));
 
         const frame = computeCameraFrame(gltf.scene);
+
         resetOrbitRef.current = () => {
           frameCamera(camera, controls, gltf.scene);
         };
@@ -1539,7 +1514,9 @@ export function SceneViewer() {
         try {
           robotTemplate = await loadGltfAsync(loader, ROBOT_MODEL_URL);
           tuneMaterials(robotTemplate);
+
           await refreshRobotConfig(bounds.floorZ);
+
           robotConfigTimerId = window.setInterval(() => {
             void refreshRobotConfig(bounds.floorZ);
           }, ROBOT_CONFIG_REFRESH_MS);
@@ -1548,11 +1525,15 @@ export function SceneViewer() {
           setRobotStatuses([]);
         }
 
+<<<<<<< HEAD
         if (disposed) {
           navigationOverlay?.dispose();
           navigationOverlay = null;
           return;
         }
+=======
+        if (disposed) return;
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
 
         setLoadState('ready');
         animateIntroCamera(camera, controls, frame, () => disposed);
@@ -1560,8 +1541,10 @@ export function SceneViewer() {
       undefined,
       (error) => {
         if (disposed) return;
+
         const message =
           error instanceof Error ? error.message : 'Failed to load 3D scene';
+
         setErrorMessage(message);
         setLoadState('error');
       },
@@ -1569,6 +1552,7 @@ export function SceneViewer() {
 
     return () => {
       disposed = true;
+
       resetOrbitRef.current = null;
       resetPathRef.current = null;
       resetRobotsRef.current = null;
@@ -1583,7 +1567,11 @@ export function SceneViewer() {
       }
 
       for (const id of Array.from(robots.keys())) {
-        removeRobot(id);
+        removeRobot({
+          id,
+          scene,
+          robots,
+        });
       }
 
       if (robotTemplate) {
@@ -1614,12 +1602,15 @@ export function SceneViewer() {
       if (loadedScene) {
         disposeObject3D(loadedScene);
         scene.remove(loadedScene);
+        loadedScene = null;
       }
 
       setSceneDebug(null);
 
       gizmo.dispose();
+
       THREE.Object3D.DEFAULT_UP.copy(previousDefaultUp);
+
       controls.dispose();
       renderer.dispose();
       dracoLoader.dispose();
@@ -1649,6 +1640,7 @@ export function SceneViewer() {
           </Text>
         </Center>
       )}
+
       <Stack
         position="absolute"
         top={3}
@@ -1659,6 +1651,7 @@ export function SceneViewer() {
         pointerEvents="none"
         maxW={{ base: 'calc(100% - 160px)', md: '280px' }}
       >
+<<<<<<< HEAD
         <Box
           px={2.5}
           py={2}
@@ -1809,7 +1802,28 @@ export function SceneViewer() {
               </Box>
             </Card.Body>
           </Card.Root>
+=======
+        <SceneControlPanel
+          loadState={loadState}
+          showGridAxes={showGridAxes}
+          onShowGridAxesChange={setShowGridAxes}
+          showDropPoint={showDropPoint}
+          onShowDropPointChange={setShowDropPoint}
+          showRoofSlice={showRoofSlice}
+          onShowRoofSliceChange={setShowRoofSlice}
+          roofSliceHeight={roofSliceHeight}
+          onRoofSliceHeightChange={setRoofSliceHeight}
+        />
+
+        {showDropPoint && (
+          <DropPointPanel
+            dropPoint={dropPoint}
+            setDropPoint={setDropPoint}
+            sceneDebug={sceneDebug}
+          />
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
         )}
+
         {showGridAxes && sceneDebug && (
           <Card.Root
             size="sm"
@@ -1823,22 +1837,26 @@ export function SceneViewer() {
               <Text fontSize="sm" fontWeight="semibold">
                 Floor reference
               </Text>
+
               <Text fontSize="sm" color="fg.muted">
                 Floor Z height:{' '}
                 <Text as="span" fontFamily="mono" color="fg">
                   {formatCoord(sceneDebug.floorZ)}
                 </Text>
               </Text>
+
               <Text fontSize="xs" color="fg.muted" lineHeight="short">
                 Red = +X, green = +Y, blue = +Z. Read vertex positions from the
                 grid; bounds min Z is the floor level.
               </Text>
+
               <Stack gap={0.5} fontFamily="mono" fontSize="xs" color="fg.muted">
                 <Text>
                   min ({formatCoord(sceneDebug.min.x)},{' '}
                   {formatCoord(sceneDebug.min.y)},{' '}
                   {formatCoord(sceneDebug.min.z)})
                 </Text>
+
                 <Text>
                   max ({formatCoord(sceneDebug.max.x)},{' '}
                   {formatCoord(sceneDebug.max.y)},{' '}
@@ -1849,108 +1867,9 @@ export function SceneViewer() {
           </Card.Root>
         )}
       </Stack>
-      {/* Robot status overlay  */}
-      <Card.Root
-        size="sm"
-        variant="outline"
-        position="absolute"
-        top="96px"
-        right={3}
-        zIndex={2}
-        bg="bg/90"
-        backdropFilter="blur(4px)"
-        pointerEvents="auto"
-        minW="240px"
-        maxW="300px"
-        maxH="calc(100% - 112px)"
-        overflowY="auto"
-      >
-        <Card.Body gap={2.5} py={3}>
-          <HStack justify="space-between" align="center">
-            <Text fontSize="sm" fontWeight="semibold">
-              Robots
-            </Text>
-            <Text fontSize="xs" color="fg.muted">
-              {robotStatuses.length} total
-            </Text>
-          </HStack>
-          {robotStatuses.length === 0 ? (
-            <Text fontSize="xs" color="fg.muted" lineHeight="short">
-              No robots loaded. Add /public/robot.glb and /public/robots.json.
-            </Text>
-          ) : (
-            <Stack gap={2}>
-              {robotStatuses.map((robot) => (
-                <Box
-                  key={robot.id}
-                  px={2}
-                  py={1.5}
-                  rounded="md"
-                  bg="bg.subtle"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                >
-                  <HStack justify="space-between" align="start" gap={3}>
-                    <Box>
-                      <Text fontSize="xs" fontWeight="semibold">
-                        {robot.name}
-                      </Text>
-                      <Text fontSize="xs" color="fg.muted" fontFamily="mono">
-                        {robot.id}
-                      </Text>
-                    </Box>
-                    <Text
-                      fontSize="xs"
-                      fontWeight="semibold"
-                      textTransform="uppercase"
-                      color={
-                        robot.status === 'blocked'
-                          ? 'fg.error'
-                          : robot.status === 'moving'
-                            ? 'blue.500'
-                            : robot.status === 'arrived'
-                              ? 'green.500'
-                              : 'fg.muted'
-                      }
-                    >
-                      {robot.status}
-                    </Text>
-                  </HStack>
-                  <Text mt={1} fontSize="xs" color="fg.muted" fontFamily="mono">
-                    x {formatCoord(robot.position.x)} · y{' '}
-                    {formatCoord(robot.position.y)} · z{' '}
-                    {formatCoord(robot.position.z)}
-                  </Text>
-                  {robot.waypointCount !== undefined && (
-                    <Text mt={1} fontSize="xs" color="fg.muted">
-                      Waypoint {(robot.waypointIndex ?? 0) + 1}/
-                      {robot.waypointCount}:{' '}
-                      {robot.waypointLabel ?? robot.waypointId}
-                    </Text>
-                  )}
-                  {robot.target && (
-                    <Text
-                      mt={1}
-                      fontSize="xs"
-                      color="fg.muted"
-                      fontFamily="mono"
-                    >
-                      → x {formatCoord(robot.target.x)} · y{' '}
-                      {formatCoord(robot.target.y)} · z{' '}
-                      {formatCoord(robot.target.z)}
-                    </Text>
-                  )}
-                  {robot.blockedBy && (
-                    <Text mt={1} fontSize="xs" color="fg.error">
-                      Blocked by {robot.blockedBy}
-                    </Text>
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </Card.Body>
-      </Card.Root>
+
+      <RobotStatusPanel robots={robotStatuses} />
+
       <HStack
         position="absolute"
         bottom={3}
@@ -1979,6 +1898,7 @@ export function SceneViewer() {
             <LuLocateFixed />
           </IconButton>
         </Tooltip>
+<<<<<<< HEAD
         <Tooltip content="Restart path" showArrow>
           <IconButton
             aria-label="Restart path"
@@ -1998,6 +1918,9 @@ export function SceneViewer() {
             <LuRotateCcw />
           </IconButton>
         </Tooltip>
+=======
+
+>>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
         <Tooltip content="Reset all robots" showArrow>
           <Button
             size="sm"
@@ -2010,6 +1933,7 @@ export function SceneViewer() {
             Reset robots
           </Button>
         </Tooltip>
+
         <Box
           px={2.5}
           py={1.5}
