@@ -23,6 +23,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { DropPointMarker } from '../drop-point-marker';
 import { NavigationOverlay } from '../navigation-overlay';
 
+// TODO: Backend Testing //
 const SCENE_URL = '/RMF2_SIM/Test_3.glb';
 
 // const SCENE_URL = '/scene.draco.glb';
