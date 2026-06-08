@@ -56,6 +56,16 @@ export const AdminRoutes: RouteObject[] = [
           return { Component: Map };
         },
       },
+      {
+        // LIF Editor
+        path: 'lif-editor',
+        lazy: async () => {
+          const { LifEditorPage } = await import(
+            '@/pages/dashboard/system/lif-editor'
+          );
+          return { Component: LifEditorPage };
+        },
+      },
     ],
 >>>>>>> 4432559 (feat(map): integrate Three.js for navigation overlay and scene viewer)
   },
