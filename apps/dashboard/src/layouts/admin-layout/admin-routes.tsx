@@ -1,5 +1,11 @@
 import { Icon } from '@chakra-ui/react';
-import { MdDashboard, MdEventNote, MdHome, MdMap } from 'react-icons/md';
+import {
+  MdDashboard,
+  MdEventNote,
+  MdHome,
+  MdMap,
+  MdEdit,
+} from 'react-icons/md';
 import { FaNetworkWired } from 'react-icons/fa';
 import { SiUnrealengine } from 'react-icons/si';
 import { GrSchedules } from 'react-icons/gr';
@@ -54,6 +60,11 @@ export const routes: DashboardRoute[] = [
         name: 'Map',
         path: '/system/map',
         icon: <Icon as={MdMap} width="20px" height="30px" color="inherit" />,
+      },
+      {
+        name: 'LIF Editor',
+        path: '/system/lif-editor',
+        icon: <Icon as={MdEdit} width="20px" height="30px" color="inherit" />,
       },
     ],
   },
