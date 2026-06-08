@@ -82,6 +82,8 @@ import { SceneControlPanel } from './ui/scene-control-panel';
 import { DropPointPanel } from './ui/drop-point-panel';
 import { RobotStatusPanel } from './ui/robot-status-panel';
 
+// TODO: Backend Testing for Reset Robots //
+
 function formatCoord(value: number) {
   return value.toFixed(3);
 }
