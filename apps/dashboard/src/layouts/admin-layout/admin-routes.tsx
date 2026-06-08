@@ -1,9 +1,19 @@
 import { Icon } from '@chakra-ui/react';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { MdDashboard, MdEventNote, MdHome } from 'react-icons/md';
 =======
 import { MdOutlineTask, MdHome, MdMap } from 'react-icons/md';
 >>>>>>> 4432559 (feat(map): integrate Three.js for navigation overlay and scene viewer)
+=======
+import {
+  MdDashboard,
+  MdEventNote,
+  MdHome,
+  MdMap,
+  MdEdit,
+} from 'react-icons/md';
+>>>>>>> 9a7b3cd (feat(lif-editor): added import and export of LIF files, TODO: optimization of rendering)
 import { FaNetworkWired } from 'react-icons/fa';
 import { SiUnrealengine } from 'react-icons/si';
 import { GrSchedules } from 'react-icons/gr';
@@ -60,6 +70,11 @@ export const routes: DashboardRoute[] = [
         icon: (
           <Icon as={MdMap} width="20px" height="30px" color="inherit" />
         ),
+      },
+      {
+        name: 'LIF Editor',
+        path: '/system/lif-editor',
+        icon: <Icon as={MdEdit} width="20px" height="30px" color="inherit" />,
       },
     ],
   },
