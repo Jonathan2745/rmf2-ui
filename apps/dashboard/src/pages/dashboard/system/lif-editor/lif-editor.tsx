@@ -16,22 +16,26 @@ import {
   saveLifLayout,
 } from './lif-editor-api';
 
-import type { LifLayout } from './lif-editor-types';
-
+import { type LifDocument } from './lif-editor-types';
 import { LifEditorCanvas } from './components/lif-editor-canvas';
 import { LifEditorSidePanel } from './components/lif-editor-side-panel';
 import { LifEditorToolbar } from './components/lif-editor-toolbar';
 
-const EMPTY_LAYOUT: LifLayout = {
-  name: 'Untitled LIF Layout',
-  version: '1.0.0',
+const EMPTY_LAYOUT: LifDocument = {
+  metaInformation: {},
+  layouts: [],
+  map_info: {
+    map_id: 'warehouse',
+    map_version: '1.0',
+    map_status: 'ENABLED',
+    map_descriptor: 'Untitled Map',
+  },
   nodes: [],
   edges: [],
-  stations: [],
 };
 
 export function LifEditorPage() {
-  const [layout, setLayout] = useState<LifLayout>(EMPTY_LAYOUT);
+  const [layout, setLayout] = useState<LifDocument>(EMPTY_LAYOUT);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +107,7 @@ export function LifEditorPage() {
 
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `${layout.name || 'layout'}.lif.json`;
+      anchor.download = `${layout.map_info?.map_id || 'layout'}.lif.json`;
       anchor.click();
 
       URL.revokeObjectURL(url);
