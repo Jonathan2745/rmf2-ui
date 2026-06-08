@@ -1,35 +1,33 @@
 export type LifNode = {
-  id: string;
-  nodeId: string;
+  node_id: string;
   x: number;
   y: number;
   theta?: number;
-  description?: string;
+  allowed_devation_xy?: number;
+  allowed_devation_theta?: number;
+  map_description?: string;
 };
 
 export type LifEdge = {
-  id: string;
-  edgeId: string;
-  startNodeId: string;
-  endNodeId: string;
-  maxSpeed?: number;
-  description?: string;
+  edge_id: string;
+  start_node_id: string;
+  end_node_id: string;
+  bidirectional?: boolean;
+  max_speed?: number;
+  length?: number;
 };
 
-export type LifStation = {
-  id: string;
-  stationId: string;
-  nodeId: string;
-  type?: string;
-  description?: string;
+export type LifMapInfo = {
+  map_id?: string;
+  map_version?: string;
+  map_status?: string;
+  map_descriptor?: string;
 };
 
-export type LifLayout = {
-  id?: string;
-  name: string;
-  version?: string;
+export type LifDocument = {
+  metaInformation?: Record<string, unknown>;
+  layouts?: unknown[];
+  map_info?: LifMapInfo;
   nodes: LifNode[];
   edges: LifEdge[];
-  stations?: LifStation[];
-  raw?: unknown;
 };
