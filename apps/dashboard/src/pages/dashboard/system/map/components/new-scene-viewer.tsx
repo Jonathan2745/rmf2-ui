@@ -854,6 +854,8 @@ import { DropPointPanel } from './ui/drop-point-panel';
 import { RobotStatusPanel } from './ui/robot-status-panel';
 >>>>>>> 7fee38d (feat(reformat): reformatted scene viewer)
 
+// TODO: Backend Testing for Reset Robots //
+
 function formatCoord(value: number) {
   return value.toFixed(3);
 }
