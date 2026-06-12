@@ -43,8 +43,5 @@
       "eslint --fix"
     ],
     "**/*": "prettier --write --ignore-unknown"
-  },
-  "dependencies": {
-    "@gltf-transform/cli": "^4.4.0"
   }
 }
