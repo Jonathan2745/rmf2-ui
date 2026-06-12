@@ -1,4 +1,4 @@
-import type { LifLayout } from './lif-editor-types';
+import type { LifDocument } from './lif-editor-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -20,18 +20,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function fetchLifLayout(): Promise<LifLayout> {
-  return request<LifLayout>('/api/lif-editor/layout');
+export async function fetchLifLayout(): Promise<LifDocument> {
+  return request<LifDocument>('/api/lif-editor/layout');
 }
 
-export async function saveLifLayout(layout: LifLayout): Promise<LifLayout> {
-  return request<LifLayout>('/api/lif-editor/layout', {
+export async function saveLifLayout(layout: LifDocument): Promise<LifDocument> {
+  return request<LifDocument>('/api/lif-editor/layout', {
     method: 'PUT',
     body: JSON.stringify(layout),
   });
 }
 
-export async function importLifLayout(file: File): Promise<LifLayout> {
+export async function importLifLayout(file: File): Promise<LifDocument> {
   const formData = new FormData();
   formData.append('file', file);
 
@@ -46,10 +46,10 @@ export async function importLifLayout(file: File): Promise<LifLayout> {
     throw new Error(message || `Import failed: ${response.status}`);
   }
 
-  return response.json() as Promise<LifLayout>;
+  return response.json() as Promise<LifDocument>;
 }
 
-export async function exportLifLayout(layout: LifLayout): Promise<Blob> {
+export async function exportLifLayout(layout: LifDocument): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}/api/lif-editor/export`, {
     method: 'POST',
     credentials: 'include',
