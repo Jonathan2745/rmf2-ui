@@ -1,4 +1,4 @@
-export const SCENE_URL = '/RMF2_SIM/Test_3.glb';
+export const SCENE_URL = '/RMF2_SIM/Test_3.draco.glb';
 export const ROBOT_MODEL_URL = '/robot.glb';
 // const ROBOTS_CONFIG_URL = '/robots.json';
 // replaced with API route
