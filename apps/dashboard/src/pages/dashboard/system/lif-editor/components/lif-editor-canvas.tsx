@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Background,
   Controls,
@@ -20,7 +21,11 @@ type LifEditorCanvasProps = {
   onSelectNode: (nodeId: string | null) => void;
 };
 
-const POSITION_SCALE = 12;
+const POSITION_SCALE = 50;
+
+const EDGE_STROKE_WIDTH = 2.5;
+const EDGE_LABEL_FONT_SIZE = 10;
+const EDGE_MARKER_SIZE = 18;
 
 const nodeTypes: NodeTypes = {
   mapNode: MapNode,
@@ -39,7 +44,6 @@ function getNodeX(node: LifNode): number {
 }
 
 function getNodeY(node: LifNode): number {
-  // Optional: invert Y if the graph appears upside-down compared to your map.
   return -node.y * POSITION_SCALE;
 }
 
@@ -48,7 +52,7 @@ function getEdgeId(edge: LifEdge): string {
 }
 
 function getEdgeLabel(edge: LifEdge): string {
-  return edge.edge_id;
+  return edge.map_description?.trim() || edge.edge_id;
 }
 
 function toFlowNodes(nodes: LifNode[], selectedNodeId: string | null): Node[] {
@@ -73,7 +77,6 @@ function toFlowNodes(nodes: LifNode[], selectedNodeId: string | null): Node[] {
 
 function toFlowEdges(edges: LifEdge[], nodes: LifNode[]): Edge[] {
   const nodeIds = new Set(nodes.map((node) => node.node_id));
-
   const skippedEdges: LifEdge[] = [];
 
   const flowEdges = edges
@@ -90,31 +93,42 @@ function toFlowEdges(edges: LifEdge[], nodes: LifNode[]): Edge[] {
         id: getEdgeId(edge),
         source,
         target,
+
+        // Keep these only if your MapNode has matching Handle IDs.
         sourceHandle: 'center-source',
         targetHandle: 'center-target',
+
         label: getEdgeLabel(edge),
         type: 'straight',
+
         markerEnd: edge.bidirectional
           ? undefined
           : {
               type: MarkerType.ArrowClosed,
-              width: 12,
-              height: 12,
+              width: EDGE_MARKER_SIZE,
+              height: EDGE_MARKER_SIZE,
             },
+
         style: {
-          strokeWidth: 1.25,
+          strokeWidth: EDGE_STROKE_WIDTH,
+          stroke: '#475569',
         },
+
         labelStyle: {
-          fontSize: 4,
-          fontWeight: 600,
+          fontSize: EDGE_LABEL_FONT_SIZE,
+          fontWeight: 700,
+          fill: '#0f172a',
         },
+
         labelShowBg: true,
         labelBgStyle: {
-          fill: 'white',
+          fill: '#ffffff',
+          fillOpacity: 0.95,
         },
-        labelBgPadding: [4, 2],
-        labelBgBorderRadius: 2,
-        interactionWidth: 8,
+        labelBgPadding: [8, 5],
+        labelBgBorderRadius: 6,
+
+        interactionWidth: 16,
       };
     })
     .filter((edge): edge is Edge => edge !== null);
@@ -135,40 +149,44 @@ export function LifEditorCanvas({
   selectedNodeId,
   onSelectNode,
 }: LifEditorCanvasProps) {
-  const nodes = toFlowNodes(layout.nodes ?? [], selectedNodeId);
-  const edges = toFlowEdges(layout.edges ?? [], layout.nodes ?? []);
+  const nodes = useMemo(
+    () => toFlowNodes(layout.nodes ?? [], selectedNodeId),
+    [layout.nodes, selectedNodeId],
+  );
 
-  console.log('LIF canvas render', {
-    rawNodeCount: layout.nodes?.length ?? 0,
-    rawEdgeCount: layout.edges?.length ?? 0,
-    renderedNodeCount: nodes.length,
-    renderedEdgeCount: edges.length,
-    firstRawNode: layout.nodes?.[0],
-    firstRenderedNode: nodes[0],
-    firstRawEdge: layout.edges?.[0],
-    firstRenderedEdge: edges[0],
-  });
+  const edges = useMemo(
+    () => toFlowEdges(layout.edges ?? [], layout.nodes ?? []),
+    [layout.edges, layout.nodes],
+  );
 
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      nodeOrigin={[0.5, 0.5]}
       fitView
+      fitViewOptions={{
+        padding: 0.25,
+      }}
       minZoom={0.05}
-      maxZoom={3}
+      maxZoom={4}
       defaultEdgeOptions={{
         type: 'straight',
         style: {
-          strokeWidth: 1,
+          strokeWidth: EDGE_STROKE_WIDTH,
+          stroke: '#475569',
         },
       }}
+      nodesDraggable={false}
+      nodesConnectable={false}
+      elementsSelectable
       onNodeClick={(_, node) => onSelectNode(node.id)}
       onPaneClick={() => onSelectNode(null)}
     >
-      <MiniMap />
+      <MiniMap zoomable pannable />
       <Controls />
-      <Background />
+      <Background gap={32} size={1} />
     </ReactFlow>
   );
 }
