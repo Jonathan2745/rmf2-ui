@@ -19,6 +19,14 @@ type LifEditorCanvasProps = {
   layout: LifDocument;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
+  editable?: boolean;
+  onMoveNode?: (
+    nodeId: string,
+    position: {
+      x: number;
+      y: number;
+    },
+  ) => void;
 };
 
 const POSITION_SCALE = 50;
@@ -44,6 +52,7 @@ function getNodeX(node: LifNode): number {
 }
 
 function getNodeY(node: LifNode): number {
+  // Invert Y so the LIF map appears in the expected orientation.
   return -node.y * POSITION_SCALE;
 }
 
@@ -53,6 +62,13 @@ function getEdgeId(edge: LifEdge): string {
 
 function getEdgeLabel(edge: LifEdge): string {
   return edge.description?.trim() || edge.edge_id;
+}
+
+function flowPositionToLifPosition(position: { x: number; y: number }) {
+  return {
+    x: position.x / POSITION_SCALE,
+    y: -position.y / POSITION_SCALE,
+  };
 }
 
 function toFlowNodes(nodes: LifNode[], selectedNodeId: string | null): Node[] {
@@ -94,7 +110,7 @@ function toFlowEdges(edges: LifEdge[], nodes: LifNode[]): Edge[] {
         source,
         target,
 
-        // Keep these only if your MapNode has matching Handle IDs.
+        // These must match the Handle IDs inside MapNode.
         sourceHandle: 'center-source',
         targetHandle: 'center-target',
 
@@ -148,6 +164,8 @@ export function LifEditorCanvas({
   layout,
   selectedNodeId,
   onSelectNode,
+  editable = false,
+  onMoveNode,
 }: LifEditorCanvasProps) {
   const nodes = useMemo(
     () => toFlowNodes(layout.nodes ?? [], selectedNodeId),
@@ -178,11 +196,16 @@ export function LifEditorCanvas({
           stroke: '#475569',
         },
       }}
-      nodesDraggable={false}
+      nodesDraggable={editable}
       nodesConnectable={false}
       elementsSelectable
       onNodeClick={(_, node) => onSelectNode(node.id)}
       onPaneClick={() => onSelectNode(null)}
+      onNodeDragStop={(_, node) => {
+        if (!editable) return;
+
+        onMoveNode?.(node.id, flowPositionToLifPosition(node.position));
+      }}
     >
       <MiniMap zoomable pannable />
       <Controls />
@@ -190,3 +213,5 @@ export function LifEditorCanvas({
     </ReactFlow>
   );
 }
+
+export default LifEditorCanvas;
