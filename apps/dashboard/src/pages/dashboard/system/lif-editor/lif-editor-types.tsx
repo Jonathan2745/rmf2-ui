@@ -15,6 +15,7 @@ export type LifEdge = {
   bidirectional?: boolean;
   max_speed?: number;
   length?: number;
+  description?: string;
 };
 
 export type LifMapInfo = {
