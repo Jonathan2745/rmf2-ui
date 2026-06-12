@@ -52,7 +52,7 @@ function getEdgeId(edge: LifEdge): string {
 }
 
 function getEdgeLabel(edge: LifEdge): string {
-  return edge.map_description?.trim() || edge.edge_id;
+  return edge.description?.trim() || edge.edge_id;
 }
 
 function toFlowNodes(nodes: LifNode[], selectedNodeId: string | null): Node[] {
