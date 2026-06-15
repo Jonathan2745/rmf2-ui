@@ -1,5 +1,3 @@
-import { SceneViewer } from './components/new-scene-viewer';
-
 import { Center, Spinner } from '@chakra-ui/react';
 import { lazy, Suspense } from 'react';
 
