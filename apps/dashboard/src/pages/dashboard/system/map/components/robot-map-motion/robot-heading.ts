@@ -1,4 +1,4 @@
-import { ROBOT_MODEL_HEADING_OFFSET } from '../robot-map-config/robot-map-constants';
+import { ROBOT_MODEL_HEADING_OFFSET } from '../constants';
 
 export function movementHeadingToModelHeading(heading: number) {
   return heading + ROBOT_MODEL_HEADING_OFFSET;

@@ -34,7 +34,7 @@ import {
   DRACO_DECODER_PATH,
   ROBOT_ARRIVAL_EPSILON,
   ROBOT_CONFIG_REFRESH_MS,
-  ROBOT_MODEL_URL,
+  AMR_URL,
   SCENE_URL,
   INITIAL_SHOW_ROOF_SLICE,
   INITIAL_ROOF_SLICE_HEIGHT,
@@ -460,7 +460,7 @@ export function SceneViewer() {
         };
 
         try {
-          robotTemplate = await loadGltfAsync(loader, ROBOT_MODEL_URL);
+          robotTemplate = await loadGltfAsync(loader, AMR_URL);
           tuneMaterials(robotTemplate);
 
           await refreshRobotConfig(bounds.floorZ);
