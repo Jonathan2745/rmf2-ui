@@ -2,11 +2,19 @@ import { defineConfig } from '@hey-api/openapi-ts';
 
 export default defineConfig([
   {
-    input: 'src/rts/openapi.json', // sign up at app.heyapi.dev
+    input: 'src/rts/openapi.json',
     output: {
       format: 'prettier',
       lint: 'eslint',
       path: 'src/rts/generated',
+    },
+  },
+  {
+    input: 'http://localhost:8008/openapi.json',
+    output: {
+      format: 'prettier',
+      lint: 'eslint',
+      path: 'src/map/generated',
     },
   },
 ]);
