@@ -1,4 +1,3 @@
-// import { SceneViewer } from './components/scene-viewer';a
 import { SceneViewer } from './components/new-scene-viewer';
 
 import { Center, Spinner } from '@chakra-ui/react';
