@@ -111,7 +111,10 @@ export class NavigationOverlay {
       this.listeners.set(type, new Set());
     }
     this.listeners.get(type)!.add(listener as Listener<keyof NavOverlayEvents>);
-    return () => this.listeners.get(type)?.delete(listener as Listener<keyof NavOverlayEvents>);
+    return () =>
+      this.listeners
+        .get(type)
+        ?.delete(listener as Listener<keyof NavOverlayEvents>);
   }
 
   private emit<K extends keyof NavOverlayEvents>(
@@ -144,11 +147,7 @@ export class NavigationOverlay {
     this.goal.setPosition(this.worldPoints[this.worldPoints.length - 1]);
     this.group.add(this.goal.group);
 
-    this.waypoints = createWaypointMarkers(
-      path,
-      this.worldPoints,
-      this.config,
-    );
+    this.waypoints = createWaypointMarkers(path, this.worldPoints, this.config);
     for (const wp of this.waypoints) {
       this.group.add(wp.group);
     }
@@ -201,7 +200,8 @@ export class NavigationOverlay {
   }
 
   tick(delta?: number) {
-    if (!this.enabled || !this.running || !this.simulator || !this.robot) return;
+    if (!this.enabled || !this.running || !this.simulator || !this.robot)
+      return;
 
     const dt = delta ?? this.clock.getDelta();
     const elapsed = this.clock.getElapsedTime();
@@ -210,7 +210,7 @@ export class NavigationOverlay {
     this.applyPose(pose);
     this.updatePipeMaterials(pose);
     this.updateWaypointStates(pose);
-    this.goal?.update(elapsed, dt);
+    this.goal?.update(elapsed);
   }
 
   reset() {
@@ -239,12 +239,11 @@ export class NavigationOverlay {
     this.robot.setPosition(pose.x, pose.y, pose.z);
     this.robot.setHeading(pose.heading);
 
-    const state =
-      this.hasArrived
-        ? 'arrived'
-        : pose.speed > 0.05
-          ? 'moving'
-          : 'idle';
+    const state = this.hasArrived
+      ? 'arrived'
+      : pose.speed > 0.05
+        ? 'moving'
+        : 'idle';
     this.robot.setColorState(state);
   }
 
@@ -257,10 +256,7 @@ export class NavigationOverlay {
 
     const { pending, traversed, active } = this.pipeMaterials;
 
-    if (
-      currentSegment >= 0 &&
-      currentSegment < this.segmentDirections.length
-    ) {
+    if (currentSegment >= 0 && currentSegment < this.segmentDirections.length) {
       const dir = this.segmentDirections[currentSegment];
       const start = this.segmentStarts[currentSegment];
       const end = this.segmentEnds[currentSegment];

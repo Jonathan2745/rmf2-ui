@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { type DriveState } from '../differential-drive.demo';
-
+import { type DriveState } from '../differential-drive.demo.ts';
 export type LoadState = 'loading' | 'ready' | 'error';
 
 export type CameraFrame = {
