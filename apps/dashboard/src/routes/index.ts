@@ -12,13 +12,6 @@ export const AdminRoutes: RouteObject[] = [
     },
   },
   {
-<<<<<<< HEAD
-    path: 'system/network',
-    lazy: async () => {
-      const { Network } = await import('@/pages/dashboard/system/network');
-      return { Component: Network };
-    },
-=======
     // System
     path: 'system',
     children: [
@@ -67,7 +60,6 @@ export const AdminRoutes: RouteObject[] = [
         },
       },
     ],
->>>>>>> 4432559 (feat(map): integrate Three.js for navigation overlay and scene viewer)
   },
   {
     path: 'system/simulation',
