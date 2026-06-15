@@ -1,10 +1,10 @@
 export const SCENE_URL =
-  'http://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/scene.draco.glb';
+  'https://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/scene.draco.glb';
 // export const ROBOT_MODEL_URL = '/robot.glb';
 export const AMR_URL =
-  'http://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/amr.glb';
+  'https://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/amr.glb';
 export const FORKLIFT_URL =
-  'http://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/forklift.glb';
+  'https://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/forklift.glb';
 
 // const ROBOTS_CONFIG_URL = '/robots.json';
 
