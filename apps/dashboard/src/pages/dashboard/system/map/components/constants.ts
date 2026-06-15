@@ -1,6 +1,13 @@
-export const SCENE_URL = '/RMF2_SIM/Test_3.draco.glb';
-export const ROBOT_MODEL_URL = '/robot.glb';
+export const SCENE_URL =
+  'http://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/scene.draco.glb';
+// export const ROBOT_MODEL_URL = '/robot.glb';
+export const AMR_URL =
+  'http://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/amr.glb';
+export const FORKLIFT_URL =
+  'http://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/forklift.glb';
+
 // const ROBOTS_CONFIG_URL = '/robots.json';
+
 // replaced with API route
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:8008';

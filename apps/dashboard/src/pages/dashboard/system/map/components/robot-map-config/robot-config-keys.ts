@@ -3,7 +3,7 @@ import {
   type RobotWaypoint,
   type DropPointCoords,
 } from '../robot-types';
-import { DEFAULT_ROBOT_COLOR } from './robot-map-constants';
+import { DEFAULT_ROBOT_COLOR } from '../constants';
 
 export function coordKey(position: Partial<DropPointCoords> | undefined) {
   if (!position) return '';

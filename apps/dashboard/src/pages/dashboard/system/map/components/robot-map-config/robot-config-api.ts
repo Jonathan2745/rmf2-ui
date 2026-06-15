@@ -1,5 +1,5 @@
 import { type RobotConfig } from '../robot-types';
-import { ROBOTS_CONFIG_URL } from './robot-map-constants';
+import { ROBOTS_CONFIG_URL } from '../constants';
 import { normalizeRobotConfigs } from './robot-config-normalize';
 
 export async function fetchRobotConfigs(): Promise<RobotConfig[]> {
