@@ -1,0 +1,372 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Dashboard API", "version": "0.1.0" },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/api/scene": {
+      "get": {
+        "summary": "Get Scene Config",
+        "operationId": "get_scene_config_api_scene_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/api/robots": {
+      "get": {
+        "summary": "Get Robots",
+        "operationId": "get_robots_api_robots_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RobotsResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Robots",
+        "operationId": "update_robots_api_robots_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RobotsResponse" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RobotsResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lif-editor/layout": {
+      "get": {
+        "summary": "Get Lif Editor Layout",
+        "operationId": "get_lif_editor_layout_api_lif_editor_layout_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LifDocument" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Lif Editor Layout",
+        "operationId": "update_lif_editor_layout_api_lif_editor_layout_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LifDocument" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LifDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lif-editor/import": {
+      "post": {
+        "summary": "Import Lif Editor Layout",
+        "operationId": "import_lif_editor_layout_api_lif_editor_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_lif_editor_layout_api_lif_editor_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LifDocument" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lif-editor/export": {
+      "get": {
+        "summary": "Export Current Lif Editor Layout",
+        "operationId": "export_current_lif_editor_layout_api_lif_editor_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      },
+      "post": {
+        "summary": "Export Lif Editor Layout",
+        "operationId": "export_lif_editor_layout_api_lif_editor_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LifDocument" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_import_lif_editor_layout_api_lif_editor_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_import_lif_editor_layout_api_lif_editor_import_post"
+      },
+      "Coords": {
+        "properties": {
+          "x": { "type": "number", "title": "X" },
+          "y": { "type": "number", "title": "Y" },
+          "z": { "type": "number", "title": "Z", "default": 0.0 }
+        },
+        "type": "object",
+        "required": ["x", "y"],
+        "title": "Coords"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LifDocument": {
+        "properties": {
+          "metaInformation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metainformation"
+          },
+          "layouts": {
+            "items": { "additionalProperties": true, "type": "object" },
+            "type": "array",
+            "title": "Layouts"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "LifDocument"
+      },
+      "RobotConfig": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Name"
+          },
+          "position": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/Coords" },
+              { "type": "null" }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/Coords" },
+              { "type": "null" }
+            ]
+          },
+          "path": {
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/RobotWaypoint" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
+            "title": "Path"
+          },
+          "startWaypointIndex": {
+            "type": "integer",
+            "title": "Startwaypointindex",
+            "default": 0
+          },
+          "loop": { "type": "boolean", "title": "Loop", "default": false },
+          "speed": { "type": "number", "title": "Speed", "default": 1.0 },
+          "enabled": { "type": "boolean", "title": "Enabled", "default": true },
+          "rotationZ": {
+            "type": "number",
+            "title": "Rotationz",
+            "default": 0.0
+          },
+          "scale": {
+            "anyOf": [
+              { "type": "number" },
+              { "additionalProperties": { "type": "number" }, "type": "object" }
+            ],
+            "title": "Scale",
+            "default": 1.0
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "enum": ["navigation", "world"],
+            "title": "Coordinatesystem",
+            "default": "world"
+          }
+        },
+        "type": "object",
+        "required": ["id"],
+        "title": "RobotConfig"
+      },
+      "RobotWaypoint": {
+        "properties": {
+          "x": { "type": "number", "title": "X" },
+          "y": { "type": "number", "title": "Y" },
+          "z": { "type": "number", "title": "Z", "default": 0.0 },
+          "id": {
+            "anyOf": [{ "type": "string" }, { "type": "integer" }],
+            "title": "Id"
+          },
+          "label": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": ["x", "y", "id"],
+        "title": "RobotWaypoint"
+      },
+      "RobotsResponse": {
+        "properties": {
+          "coordinateSystem": {
+            "type": "string",
+            "enum": ["navigation", "world"],
+            "title": "Coordinatesystem",
+            "default": "world"
+          },
+          "robots": {
+            "items": { "$ref": "#/components/schemas/RobotConfig" },
+            "type": "array",
+            "title": "Robots"
+          }
+        },
+        "type": "object",
+        "title": "RobotsResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" },
+          "input": { "title": "Input" },
+          "ctx": { "type": "object", "title": "Context" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

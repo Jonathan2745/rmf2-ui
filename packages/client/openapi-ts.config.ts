@@ -10,7 +10,7 @@ export default defineConfig([
     },
   },
   {
-    input: 'http://localhost:8008/openapi.json',
+    input: 'src/map/openapi.json',
     output: {
       format: 'prettier',
       lint: 'eslint',
