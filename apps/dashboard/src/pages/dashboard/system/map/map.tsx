@@ -1,7 +1,7 @@
 import { Center, Spinner } from '@chakra-ui/react';
 import { lazy, Suspense } from 'react';
 
-const SceneViewer = lazy(() => import('./components/new-scene-viewer'));
+const SceneViewer = lazy(() => import('./components/scene-viewer'));
 export function Map() {
   return (
     <Suspense
