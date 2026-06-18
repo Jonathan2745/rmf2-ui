@@ -49,25 +49,16 @@ export const AdminRoutes: RouteObject[] = [
           return { Component: Map };
         },
       },
-      {
-        // LIF Editor
-        path: 'lif-editor',
-        lazy: async () => {
-          const { LifEditorPage } = await import(
-            '@/pages/dashboard/system/lif-editor'
-          );
-          return { Component: LifEditorPage };
-        },
-      },
     ],
   },
+
   {
-    path: 'system/simulation',
+    path: 'tools/lif-editor',
     lazy: async () => {
-      const { Simulation } = await import(
-        '@/pages/dashboard/system/simulation'
+      const { LifEditorPage } = await import(
+        '@/pages/dashboard/tools/lif-editor'
       );
-      return { Component: Simulation };
+      return { Component: LifEditorPage };
     },
   },
   {
