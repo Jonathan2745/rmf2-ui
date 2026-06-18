@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge,
   Box,
   Button,
   Card,
   Center,
   Grid,
   HStack,
+  Icon,
+  SimpleGrid,
   Spinner,
   Stack,
   Text,
 } from '@chakra-ui/react';
+import { Banner } from '@/components/banner';
+import { MiniStatisticsCard } from '@/components/card';
+import { IconBox } from '@/components/icons';
+
+import { FiCircle, FiGitBranch, FiEdit3 } from 'react-icons/fi';
 
 import {
   exportLifLayout,
@@ -22,7 +28,6 @@ import {
 import { type LifDocument } from './lif-editor-types';
 import { LifEditorCanvas } from './components/lif-editor-canvas';
 import { LifEditorSidePanel } from './components/lif-editor-side-panel';
-import { LifEditorToolbar } from './components/lif-editor-toolbar';
 
 import { cloneLayout, updateNodePosition } from './utils/lif-layout-utils';
 
@@ -53,12 +58,32 @@ export function LifEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImportButtonClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    await handleImport(file);
+
+    event.target.value = '';
+  };
+
   const activeLayout = useMemo(() => {
     return editMode && draftLayout ? draftLayout : layout;
   }, [editMode, draftLayout, layout]);
 
   const nodeCount = activeLayout.nodes?.length ?? 0;
   const edgeCount = activeLayout.edges?.length ?? 0;
+  const brandColor = { base: 'brand.500', _dark: 'white' };
+  const boxBg = { base: 'secondaryGray.300', _dark: 'whiteAlpha.100' };
 
   const loadLayout = useCallback(async () => {
     setIsLoading(true);
@@ -218,138 +243,223 @@ export function LifEditorPage() {
   };
 
   return (
-    <Stack gap={4} h="full">
-      <Stack gap={1}>
-        <HStack gap={3} align="center" wrap="wrap">
-          <Text fontSize="2xl" fontWeight="semibold">
-            LIF Editor
-          </Text>
+    <Box>
+      <Stack gap={4} h="full">
+        <Stack gap={1}>
+          <Banner.Root gradientFrom="purple.800" gradientTo="purple.100">
+            <Banner.Header>
+              Create, import, edit, and export route layouts.
+            </Banner.Header>
+            <Banner.Content>
+              <Banner.Button
+                borderRadius="5px"
+                onClick={handleRefresh}
+                disabled={isLoading || isSaving}
+                bg="white"
+                _hover={{ bg: 'whiteAlpha.800' }}
+              >
+                Refresh
+              </Banner.Button>
 
-          <Badge colorPalette={editMode ? 'blue' : 'gray'}>
-            {editMode ? 'Editing temporary copy' : 'Read-only'}
-          </Badge>
-        </HStack>
+              <Banner.Button
+                borderRadius="5px"
+                onClick={handleSave}
+                disabled={isLoading || isSaving || editMode}
+                bg="white"
+                _hover={{ bg: 'whiteAlpha.800' }}
+              >
+                Save
+              </Banner.Button>
 
-        <Text color="fg.muted">
-          Create, import, edit, and export VDA5050 LIF route layouts.
-        </Text>
+              <Banner.Button
+                borderRadius="5px"
+                onClick={handleImportButtonClick}
+                disabled={isLoading || isSaving}
+                bg="white"
+                _hover={{ bg: 'whiteAlpha.800' }}
+              >
+                Import LIF
+              </Banner.Button>
 
-        <Text fontSize="sm" color="fg.muted">
-          {nodeCount} nodes · {edgeCount} edges
-        </Text>
-      </Stack>
+              <Banner.Button
+                borderRadius="5px"
+                onClick={handleExport}
+                disabled={isLoading || isSaving}
+                bg="white"
+                _hover={{ bg: 'whiteAlpha.800' }}
+              >
+                {editMode ? 'Export lif-temp.json' : 'Export LIF'}
+              </Banner.Button>
+            </Banner.Content>
+          </Banner.Root>
 
-      <LifEditorToolbar
-        isLoading={isLoading}
-        isSaving={isSaving}
-        onRefresh={handleRefresh}
-        onSave={handleSave}
-        onImport={handleImport}
-        onExport={handleExport}
-      />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,.lif,.lif.json,application/json"
+            hidden
+            onChange={handleImportFileChange}
+          />
+          <Text color="fg.muted"></Text>
+          <SimpleGrid
+            columns={{ base: 2, sm: 2, md: 3, lg: 4 }}
+            gap="20px"
+            mt="20px"
+          >
+            <MiniStatisticsCard
+              startContent={
+                <IconBox
+                  w="56px"
+                  h="56px"
+                  bg={boxBg}
+                  icon={
+                    <Icon w="32px" h="32px" as={FiEdit3} color={brandColor} />
+                  }
+                />
+              }
+              name="Editor Mode"
+              value={editMode ? 'Edit Mode' : 'View Only'}
+            />
+            <MiniStatisticsCard
+              startContent={
+                <IconBox
+                  w="56px"
+                  h="56px"
+                  bg={boxBg}
+                  icon={
+                    <Icon w="32px" h="32px" as={FiCircle} color={brandColor} />
+                  }
+                />
+              }
+              name="Total Nodes"
+              value={nodeCount}
+            />
 
-      <Card.Root variant="outline">
-        <Card.Body>
-          <HStack justify="space-between" align="center" gap={3} wrap="wrap">
-            <Stack gap={1}>
-              <Text fontWeight="semibold">Temporary edit mode</Text>
+            <MiniStatisticsCard
+              startContent={
+                <IconBox
+                  w="56px"
+                  h="56px"
+                  bg={boxBg}
+                  icon={
+                    <Icon
+                      w="32px"
+                      h="32px"
+                      as={FiGitBranch}
+                      color={brandColor}
+                    />
+                  }
+                />
+              }
+              name="Total Edges"
+              value={edgeCount}
+            />
+          </SimpleGrid>
+        </Stack>
 
-              <Text fontSize="sm" color="fg.muted">
-                {editMode
-                  ? 'You are editing a temporary copy. The original lif.json is not modified.'
-                  : 'Enable edit mode to create a temporary copy of the current LIF layout.'}
-              </Text>
-            </Stack>
-
-            <HStack gap={2} wrap="wrap">
-              {!editMode ? (
-                <Button
-                  size="sm"
-                  colorPalette="blue"
-                  onClick={startEditing}
-                  disabled={isLoading}
-                >
-                  Edit copy
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    size="sm"
-                    colorPalette="green"
-                    onClick={handleExportDraft}
-                    disabled={!draftLayout}
-                  >
-                    Export lif-temp.json
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="surface"
-                    colorPalette="orange"
-                    onClick={resetDraft}
-                    disabled={!draftLayout}
-                  >
-                    Reset edits
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    colorPalette="gray"
-                    onClick={cancelEditing}
-                  >
-                    Cancel edit
-                  </Button>
-                </>
-              )}
-            </HStack>
-          </HStack>
-        </Card.Body>
-      </Card.Root>
-
-      {errorMessage && (
-        <Card.Root borderColor="red.300">
+        <Card.Root variant="outline">
           <Card.Body>
-            <Text color="fg.error">{errorMessage}</Text>
+            <HStack justify="space-between" align="center" gap={3} wrap="wrap">
+              <Stack gap={1}>
+                <Text fontWeight="semibold">Temporary edit mode</Text>
+
+                <Text fontSize="sm" color="fg.muted">
+                  {editMode
+                    ? 'You are editing a temporary copy. The original lif.json is not modified.'
+                    : 'Enable edit mode to create a temporary copy of the current LIF layout.'}
+                </Text>
+              </Stack>
+
+              <HStack gap={2} wrap="wrap">
+                {!editMode ? (
+                  <Button
+                    size="sm"
+                    colorPalette="blue"
+                    onClick={startEditing}
+                    disabled={isLoading}
+                  >
+                    Edit copy
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      colorPalette="green"
+                      onClick={handleExportDraft}
+                      disabled={!draftLayout}
+                    >
+                      Export lif-temp.json
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="surface"
+                      colorPalette="orange"
+                      onClick={resetDraft}
+                      disabled={!draftLayout}
+                    >
+                      Reset edits
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      colorPalette="gray"
+                      onClick={cancelEditing}
+                    >
+                      Cancel edit
+                    </Button>
+                  </>
+                )}
+              </HStack>
+            </HStack>
           </Card.Body>
         </Card.Root>
-      )}
 
-      <Grid
-        templateColumns={{ base: '1fr', xl: '1fr 320px' }}
-        gap={4}
-        minH="600px"
-      >
-        <Box
-          position="relative"
-          h={{ base: '500px', xl: '70vh' }}
-          borderWidth="1px"
-          borderColor="border.subtle"
-          rounded="lg"
-          overflow="hidden"
-          bg="white"
+        {errorMessage && (
+          <Card.Root borderColor="red.300">
+            <Card.Body>
+              <Text color="fg.error">{errorMessage}</Text>
+            </Card.Body>
+          </Card.Root>
+        )}
+
+        <Grid
+          templateColumns={{ base: '1fr', xl: '1fr 320px' }}
+          gap={4}
+          minH="600px"
         >
-          {isLoading ? (
-            <Center h="full">
-              <Spinner />
-            </Center>
-          ) : (
-            <LifEditorCanvas
-              layout={activeLayout}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-              editable={editMode}
-              onMoveNode={handleMoveNode}
-            />
-          )}
-        </Box>
+          <Box
+            position="relative"
+            h={{ base: '500px', xl: '70vh' }}
+            borderWidth="1px"
+            borderColor="border.subtle"
+            rounded="lg"
+            overflow="hidden"
+            bg="white"
+          >
+            {isLoading ? (
+              <Center h="full">
+                <Spinner />
+              </Center>
+            ) : (
+              <LifEditorCanvas
+                layout={activeLayout}
+                selectedNodeId={selectedNodeId}
+                onSelectNode={setSelectedNodeId}
+                editable={editMode}
+                onMoveNode={handleMoveNode}
+              />
+            )}
+          </Box>
 
-        <LifEditorSidePanel
-          layout={activeLayout}
-          selectedNodeId={selectedNodeId}
-        />
-      </Grid>
-    </Stack>
+          <LifEditorSidePanel
+            layout={activeLayout}
+            selectedNodeId={selectedNodeId}
+          />
+        </Grid>
+      </Stack>
+    </Box>
   );
 }
 
