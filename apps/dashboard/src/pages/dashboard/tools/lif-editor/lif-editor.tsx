@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toaster } from '@/components/ui/toaster';
+
 import {
   Box,
   Button,
@@ -28,10 +31,10 @@ import {
 import { type LifDocument } from './lif-editor-types';
 import { LifEditorCanvas } from './components/lif-editor-canvas';
 import { LifEditorSidePanel } from './components/lif-editor-side-panel';
-
 import { cloneLayout, updateNodePosition } from './utils/lif-layout-utils';
-
 import { downloadJsonFile } from './utils/download-json-file';
+
+const LIF_LAYOUT_QUERY_KEY = ['LIFLayout'];
 
 const EMPTY_LAYOUT: LifDocument = {
   metaInformation: {},
@@ -47,18 +50,24 @@ const EMPTY_LAYOUT: LifDocument = {
 };
 
 export function LifEditorPage() {
-  const [layout, setLayout] = useState<LifDocument>(EMPTY_LAYOUT);
   const [draftLayout, setDraftLayout] = useState<LifDocument | null>(null);
-
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
   const [editMode, setEditMode] = useState(false);
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const {
+    data: layout = EMPTY_LAYOUT,
+    isPending: isLoading,
+    isError: isLoadError,
+    error: loadError,
+  } = useQuery({
+    queryKey: LIF_LAYOUT_QUERY_KEY,
+    queryFn: fetchLifLayout,
+    staleTime: 50 * 1000,
+    gcTime: 0,
+  });
 
   const handleImportButtonClick = () => {
     importInputRef.current?.click();
@@ -68,11 +77,8 @@ export function LifEditorPage() {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-
     if (!file) return;
-
     await handleImport(file);
-
     event.target.value = '';
   };
 
@@ -85,31 +91,6 @@ export function LifEditorPage() {
   const brandColor = { base: 'brand.500', _dark: 'white' };
   const boxBg = { base: 'secondaryGray.300', _dark: 'whiteAlpha.100' };
 
-  const loadLayout = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const nextLayout = await fetchLifLayout();
-
-      setLayout(nextLayout);
-      setDraftLayout(null);
-      setEditMode(false);
-      setSelectedNodeId(null);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to load LIF layout';
-
-      setErrorMessage(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadLayout();
-  }, [loadLayout]);
-
   const confirmDiscardDraft = () => {
     if (!editMode) return true;
 
@@ -118,71 +99,87 @@ export function LifEditorPage() {
     );
   };
 
-  const handleRefresh = async () => {
-    if (!confirmDiscardDraft()) return;
-
-    await loadLayout();
-  };
-
-  const handleSave = async () => {
-    if (editMode) {
-      setErrorMessage(
-        'You are editing a temporary copy. Export lif-temp.json instead, or cancel edit mode before saving the original layout.',
-      );
+  // Error Toaster
+  useEffect(() => {
+    if (!isLoadError) {
+      return;
+    }
+    const toasterId = 'lif-layout-load-error';
+    if (toaster.isVisible(toasterId)) {
       return;
     }
 
-    setIsSaving(true);
-    setErrorMessage(null);
+    toaster.create({
+      id: toasterId,
+      title: 'Error Loading LIF Layout',
+      description:
+        loadError instanceof Error
+          ? `${loadError.name}: ${loadError.message}`
+          : 'Failed to load LIF layout',
+      type: 'error',
+      duration: 10000,
+      closable: true,
+    });
+  }, [isLoadError, loadError]);
 
-    try {
-      const savedLayout = await saveLifLayout(layout);
-
-      setLayout(savedLayout);
+  const saveLayoutMutation = useMutation({
+    mutationFn: saveLifLayout,
+    onSuccess: (savedLayout) => {
+      queryClient.setQueryData(LIF_LAYOUT_QUERY_KEY, savedLayout);
       setSelectedNodeId(null);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to save LIF layout';
 
-      setErrorMessage(message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      toaster.create({
+        title: 'LIF Layout Saved',
+        description: 'The original LIF layout was saved successfully.',
+        type: 'success',
+        duration: 5000,
+        closable: true,
+      });
+    },
+    onError: (error) => {
+      toaster.create({
+        title: 'Failed to Save LIF Layout',
+        description:
+          error instanceof Error ? error.message : 'Failed to save LIF layout',
+        type: 'error',
+        duration: 10000,
+        closable: true,
+      });
+    },
+  });
 
-  const handleImport = async (file: File) => {
-    if (!confirmDiscardDraft()) return;
+  const importLayoutMutation = useMutation({
+    mutationFn: importLifLayout,
+    onSuccess: (importedLayout) => {
+      queryClient.setQueryData(LIF_LAYOUT_QUERY_KEY, importedLayout);
 
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const importedLayout = await importLifLayout(file);
-
-      setLayout(importedLayout);
       setDraftLayout(null);
       setEditMode(false);
       setSelectedNodeId(null);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to import LIF file';
 
-      setErrorMessage(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      toaster.create({
+        title: 'LIF File Imported',
+        description: 'The imported LIF layout is now loaded.',
+        type: 'success',
+        duration: 5000,
+        closable: true,
+      });
+    },
+    onError: (error) => {
+      toaster.create({
+        title: 'Failed to Import LIF File',
+        description:
+          error instanceof Error ? error.message : 'Failed to import LIF file',
+        type: 'error',
+        duration: 10000,
+        closable: true,
+      });
+    },
+  });
 
-  const handleExport = async () => {
-    setErrorMessage(null);
-
-    if (editMode) {
-      handleExportDraft();
-      return;
-    }
-
-    try {
-      const blob = await exportLifLayout(layout);
+  const exportLayoutMutation = useMutation({
+    mutationFn: exportLifLayout,
+    onSuccess: (blob) => {
       const url = URL.createObjectURL(blob);
 
       const anchor = document.createElement('a');
@@ -191,37 +188,89 @@ export function LifEditorPage() {
       anchor.click();
 
       URL.revokeObjectURL(url);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to export LIF file';
+    },
+    onError: (error) => {
+      toaster.create({
+        title: 'Failed to Export LIF File',
+        description:
+          error instanceof Error ? error.message : 'Failed to export LIF file',
+        type: 'error',
+        duration: 10000,
+        closable: true,
+      });
+    },
+  });
 
-      setErrorMessage(message);
+  const handleRefresh = async () => {
+    if (!confirmDiscardDraft()) return;
+
+    setDraftLayout(null);
+    setEditMode(false);
+    setSelectedNodeId(null);
+
+    await queryClient.invalidateQueries({
+      queryKey: LIF_LAYOUT_QUERY_KEY,
+    });
+  };
+
+  const handleSave = async () => {
+    if (editMode) {
+      toaster.create({
+        title: 'Cannot Save Temporary Copy',
+        description:
+          'You are editing a temporary copy. Export lif-temp.json instead, or cancel edit mode before saving the original layout.',
+        type: 'warning',
+        duration: 7000,
+        closable: true,
+      });
+      return;
     }
+
+    saveLayoutMutation.mutateAsync(layout);
+  };
+
+  const handleImport = async (file: File) => {
+    if (!confirmDiscardDraft()) return;
+
+    importLayoutMutation.mutateAsync(file);
+  };
+
+  const handleExport = async () => {
+    if (editMode) {
+      handleExportDraft();
+      return;
+    }
+
+    exportLayoutMutation.mutateAsync(layout);
   };
 
   const startEditing = () => {
     setDraftLayout(cloneLayout(layout));
     setEditMode(true);
     setSelectedNodeId(null);
-    setErrorMessage(null);
   };
 
   const cancelEditing = () => {
     setDraftLayout(null);
     setEditMode(false);
     setSelectedNodeId(null);
-    setErrorMessage(null);
   };
 
   const resetDraft = () => {
     setDraftLayout(cloneLayout(layout));
     setSelectedNodeId(null);
-    setErrorMessage(null);
   };
 
   const handleExportDraft = () => {
     if (!draftLayout) {
-      setErrorMessage('No temporary LIF draft is available to export.');
+      toaster.create({
+        title: 'No temporary LIF draft is available to export.',
+        description:
+          'Create a temporary LIF layout before trying to export it.',
+        type: 'warning',
+        duration: 7000,
+        closable: true,
+      });
       return;
     }
 
@@ -242,6 +291,12 @@ export function LifEditorPage() {
     });
   };
 
+  const isSaving = saveLayoutMutation.isPending;
+  const isImporting = importLayoutMutation.isPending;
+  const isExporting = exportLayoutMutation.isPending;
+
+  const isBusy = isLoading || isSaving || isImporting || isExporting;
+
   return (
     <Box>
       <Stack gap={4} h="full">
@@ -254,7 +309,7 @@ export function LifEditorPage() {
               <Banner.Button
                 borderRadius="5px"
                 onClick={handleRefresh}
-                disabled={isLoading || isSaving}
+                disabled={isBusy}
                 bg="white"
                 _hover={{ bg: 'whiteAlpha.800' }}
               >
@@ -264,7 +319,7 @@ export function LifEditorPage() {
               <Banner.Button
                 borderRadius="5px"
                 onClick={handleSave}
-                disabled={isLoading || isSaving || editMode}
+                disabled={isBusy}
                 bg="white"
                 _hover={{ bg: 'whiteAlpha.800' }}
               >
@@ -274,7 +329,7 @@ export function LifEditorPage() {
               <Banner.Button
                 borderRadius="5px"
                 onClick={handleImportButtonClick}
-                disabled={isLoading || isSaving}
+                disabled={isBusy}
                 bg="white"
                 _hover={{ bg: 'whiteAlpha.800' }}
               >
@@ -284,7 +339,7 @@ export function LifEditorPage() {
               <Banner.Button
                 borderRadius="5px"
                 onClick={handleExport}
-                disabled={isLoading || isSaving}
+                disabled={isBusy}
                 bg="white"
                 _hover={{ bg: 'whiteAlpha.800' }}
               >
@@ -415,14 +470,6 @@ export function LifEditorPage() {
             </HStack>
           </Card.Body>
         </Card.Root>
-
-        {errorMessage && (
-          <Card.Root borderColor="red.300">
-            <Card.Body>
-              <Text color="fg.error">{errorMessage}</Text>
-            </Card.Body>
-          </Card.Root>
-        )}
 
         <Grid
           templateColumns={{ base: '1fr', xl: '1fr 320px' }}
