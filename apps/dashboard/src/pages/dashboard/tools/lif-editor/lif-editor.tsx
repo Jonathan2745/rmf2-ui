@@ -201,33 +201,33 @@ export function LifEditorPage() {
     },
   });
 
-  const handleRefresh = async () => {
-    if (!confirmDiscardDraft()) return;
+  // const handleRefresh = async () => {
+  //   if (!confirmDiscardDraft()) return;
 
-    setDraftLayout(null);
-    setEditMode(false);
-    setSelectedNodeId(null);
+  //   setDraftLayout(null);
+  //   setEditMode(false);
+  //   setSelectedNodeId(null);
 
-    await queryClient.invalidateQueries({
-      queryKey: LIF_LAYOUT_QUERY_KEY,
-    });
-  };
+  //   await queryClient.invalidateQueries({
+  //     queryKey: LIF_LAYOUT_QUERY_KEY,
+  //   });
+  // };
 
-  const handleSave = async () => {
-    if (editMode) {
-      toaster.create({
-        title: 'Cannot Save Temporary Copy',
-        description:
-          'You are editing a temporary copy. Export lif-temp.json instead, or cancel edit mode before saving the original layout.',
-        type: 'warning',
-        duration: 7000,
-        closable: true,
-      });
-      return;
-    }
+  // const handleSave = async () => {
+  //   if (editMode) {
+  //     toaster.create({
+  //       title: 'Cannot Save Temporary Copy',
+  //       description:
+  //         'You are editing a temporary copy. Export lif-temp.json instead, or cancel edit mode before saving the original layout.',
+  //       type: 'warning',
+  //       duration: 7000,
+  //       closable: true,
+  //     });
+  //     return;
+  //   }
 
-    saveLayoutMutation.mutateAsync(layout);
-  };
+  //   saveLayoutMutation.mutateAsync(layout);
+  // };
 
   const handleImport = async (file: File) => {
     if (!confirmDiscardDraft()) return;
@@ -306,26 +306,6 @@ export function LifEditorPage() {
               Create, import, edit, and export route layouts.
             </Banner.Header>
             <Banner.Content>
-              <Banner.Button
-                borderRadius="5px"
-                onClick={handleRefresh}
-                disabled={isBusy}
-                bg="white"
-                _hover={{ bg: 'whiteAlpha.800' }}
-              >
-                Refresh
-              </Banner.Button>
-
-              <Banner.Button
-                borderRadius="5px"
-                onClick={handleSave}
-                disabled={isBusy}
-                bg="white"
-                _hover={{ bg: 'whiteAlpha.800' }}
-              >
-                Save
-              </Banner.Button>
-
               <Banner.Button
                 borderRadius="5px"
                 onClick={handleImportButtonClick}
