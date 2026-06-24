@@ -53,19 +53,20 @@ export const AdminRoutes: RouteObject[] = [
   },
 
   {
+    path: 'operation/schedule',
+    lazy: async () => {
+      const { Schedule } = await import('@/pages/dashboard/operation/schedule');
+      return { Component: Schedule };
+    },
+  },
+
+  {
     path: 'tools/lif-editor',
     lazy: async () => {
       const { LifEditorPage } = await import(
         '@/pages/dashboard/tools/lif-editor'
       );
       return { Component: LifEditorPage };
-    },
-  },
-  {
-    path: 'operation/schedule',
-    lazy: async () => {
-      const { Schedule } = await import('@/pages/dashboard/operation/schedule');
-      return { Component: Schedule };
     },
   },
 ];
