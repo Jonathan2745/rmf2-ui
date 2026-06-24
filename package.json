@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "pnpm app dev",
-    "prepare": "pnpm run -r build && husky",
+    "prepare": "husky",
     "build": "pnpm run -r build",
     "test": "pnpm run -r test",
     "lint": "eslint .",

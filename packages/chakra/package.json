@@ -8,6 +8,7 @@
   "types": "dist/index.es.d.ts",
   "scripts": {
     "dev": "vite",
+    "prepare": "pnpm run build",
     "build": "pnpm typegen && tsc -b && vite build",
     "typegen": "npx @chakra-ui/cli typegen ./src/horizon/theme/theme.ts",
     "lint": "eslint .",
