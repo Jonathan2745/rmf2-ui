@@ -64,17 +64,7 @@ export const routes: DashboardRoute[] = [
       },
     ],
   },
-  {
-    name: 'Tools',
-    icon: <Icon as={MdBuild} width="20px" height="20px" color="inherit" />,
-    children: [
-      {
-        name: 'LIF Editor',
-        path: '/tools/lif-editor',
-        icon: <Icon as={MdEdit} width="20px" height="30px" color="inherit" />,
-      },
-    ],
-  },
+
   {
     name: 'Operation',
     icon: <Icon as={MdEventNote} width="20px" height="20px" color="inherit" />,
@@ -87,6 +77,17 @@ export const routes: DashboardRoute[] = [
         icon: (
           <Icon as={GrSchedules} width="20px" height="30px" color="inherit" />
         ),
+      },
+    ],
+  },
+  {
+    name: 'Tools',
+    icon: <Icon as={MdBuild} width="20px" height="20px" color="inherit" />,
+    children: [
+      {
+        name: 'LIF Editor',
+        path: '/tools/lif-editor',
+        icon: <Icon as={MdEdit} width="20px" height="30px" color="inherit" />,
       },
     ],
   },
