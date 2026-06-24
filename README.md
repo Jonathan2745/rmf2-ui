@@ -46,7 +46,7 @@ git clone git@gitlab.com:ROSI-AP/rmf2/rmf2-ui.git
 cd rmf2-ui
 ```
 
-Install dependencies
+Install dependencies & build
 
 ```bash
 pnpm install

@@ -5,11 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "pnpm app dev",
+    "prepare": "pnpm run -r build && husky",
     "build": "pnpm run -r build",
     "test": "pnpm run -r test",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepare": "pnpm --filter @rmf2-ui/* build && husky",
     "chakra": "pnpm --filter @rmf2-ui/chakra",
     "client": "pnpm --filter @rmf2-ui/client",
     "data": "pnpm --filter @rmf2-ui/data",
