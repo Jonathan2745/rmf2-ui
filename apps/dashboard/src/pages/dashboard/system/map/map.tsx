@@ -1,22 +1,8 @@
-// Chakra imports
-import {
-  Box,
-  Button,
-  Card,
-  HStack,
-  IconButton,
-  Kbd,
-  Stack,
-  Text,
-} from '@chakra-ui/react';
-
 // Custom components
-import { Tooltip } from '@/components/ui/tooltip';
 import { toaster } from '@/components/ui/toaster';
 import { DropPointMarker } from './drop-point-marker';
 import { DropPointPanel } from './components/ui/drop-point-panel';
 import { RobotStatusPanel } from './components/ui/robot-status-panel';
-import { SceneControlPanel } from './components/ui/scene-control-panel';
 
 // React imports
 import { useEffect, useRef, useState } from 'react';
@@ -89,32 +75,29 @@ import {
 import { disposeObject3D } from './components/robot-map-scene/scene-dispose';
 import { createGridAxesHelpers } from './components/robot-map-scene/scene-grid-axis';
 
+import {
+  SceneViewer,
+  type SceneViewerBottomPanelItem,
+  type SceneViewerRoofSliceControl,
+  type SceneViewerToggleControl,
+} from './components/scene-viewer';
+
 const SCENE_ASSET_URL_QUERY_KEY = ['SceneAssetUrls'] as const;
 const ROBOT_CONFIG_QUERY_KEY = ['RobotConfigs'] as const;
-
-function formatCoord(value: number) {
-  return value.toFixed(3);
-}
-
-import { SceneViewer } from './components/scene-viewer';
 
 export function Map() {
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-
   const resetOrbitRef = useRef<(() => void) | null>(null);
   const resetRobotsRef = useRef<(() => void) | null>(null);
   const sceneApiRef = useRef<SceneViewerApi | null>(null);
-
   const sceneRef = useRef<THREE.Scene | null>(null);
   const robotsRef = useRef<Map<string, RobotRuntime>>(new globalThis.Map());
   const robotTemplateRef = useRef<THREE.Group | null>(null);
   const floorZRef = useRef(0);
-
   const publishRobotStatusesRef = useRef<((force?: boolean) => void) | null>(
     null,
   );
-
   const showDropPointRef = useRef(false);
   const dropPointRef = useRef<DropPointCoords>({
     x: 0,
@@ -124,30 +107,24 @@ export function Map() {
 
   // State
   const [robotConfigReady, setRobotConfigReady] = useState(false);
-
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const [showGridAxes, setShowGridAxes] = useState(false);
   const [showDropPoint, setShowDropPoint] = useState(false);
   const [showRoofSlice, setShowRoofSlice] = useState(INITIAL_SHOW_ROOF_SLICE);
   const [roofSliceHeight, setRoofSliceHeight] = useState(
     INITIAL_ROOF_SLICE_HEIGHT,
   );
-
   const [dropPoint, setDropPoint] = useState<DropPointCoords>({
     x: 0,
     y: 0,
     z: 0,
   });
-
   const [sceneDebug, setSceneDebug] = useState<SceneDebugInfo | null>(null);
   const [robotStatuses, setRobotStatuses] = useState<RobotStatus[]>([]);
-
   const [loadingMessage, setLoadingMessage] = useState('Preparing scene...');
   const [loadingProgress, setLoadingProgress] = useState<number | null>(null);
-
-  showDropPointRef.current = showDropPoint;
+  showDropPointRef.current = showDropPoint; // potentially can abstract out
   dropPointRef.current = dropPoint;
 
   // Queries
@@ -170,6 +147,66 @@ export function Map() {
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
+  const bottomPanelItems: SceneViewerBottomPanelItem[] = [
+    {
+      type: 'icon-button',
+      tooltip: 'Reset orbit origin',
+      ariaLabel: 'Reset orbit origin',
+      icon: <LuLocateFixed />,
+      colorPalette: 'gray',
+      disabled: loadState !== 'ready',
+      onClick: () => resetOrbitRef.current?.(),
+    },
+    {
+      type: 'button',
+      tooltip: 'Reset all robots',
+      label: 'Reset robots',
+      colorPalette: 'blue',
+      disabled: loadState !== 'ready' || robotStatuses.length === 0,
+      onClick: () => resetRobotsRef.current?.(),
+    },
+    {
+      type: 'shortcut-hint',
+      shortcut: 'Shift',
+      label: 'pan',
+    },
+  ];
+
+  const sceneViewerToggles: SceneViewerToggleControl[] = [
+    {
+      id: 'grid-axes',
+      label: 'Show grid / axes',
+      checked: showGridAxes,
+      onCheckedChange: setShowGridAxes,
+      disabled: loadState !== 'ready',
+    },
+    {
+      id: 'drop-point',
+      label: 'Show drop point',
+      checked: showDropPoint,
+      onCheckedChange: setShowDropPoint,
+      disabled: loadState !== 'ready',
+    },
+    {
+      id: 'roof-slice',
+      label: 'Slice roof',
+      checked: showRoofSlice,
+      onCheckedChange: setShowRoofSlice,
+      disabled: loadState !== 'ready',
+    },
+  ];
+
+  const roofSliceControl: SceneViewerRoofSliceControl = {
+    label: 'Roof slice height',
+    value: roofSliceHeight,
+    onValueChange: setRoofSliceHeight,
+    enabled: showRoofSlice,
+    disabled: loadState !== 'ready',
+    min: 0,
+    max: 20,
+    step: 0.1,
+  };
 
   // Fallback scene asset toaster
   useEffect(() => {
@@ -685,6 +722,7 @@ export function Map() {
       }
     };
   }, [resolvedAssetUrls]);
+
   return (
     <SceneViewer.Root ref={containerRef}>
       <SceneViewer.Pending
@@ -703,16 +741,10 @@ export function Map() {
       />
 
       <SceneViewer.LeftPanel>
-        <SceneControlPanel
+        <SceneViewer.ControlPanel
           loadState={loadState}
-          showGridAxes={showGridAxes}
-          onShowGridAxesChange={setShowGridAxes}
-          showDropPoint={showDropPoint}
-          onShowDropPointChange={setShowDropPoint}
-          showRoofSlice={showRoofSlice}
-          onShowRoofSliceChange={setShowRoofSlice}
-          roofSliceHeight={roofSliceHeight}
-          onRoofSliceHeightChange={setRoofSliceHeight}
+          toggles={sceneViewerToggles}
+          roofSlice={roofSliceControl}
         />
 
         {showDropPoint && (
@@ -723,101 +755,16 @@ export function Map() {
           />
         )}
 
-        {showGridAxes && sceneDebug && (
-          <Card.Root
-            size="sm"
-            variant="outline"
-            bg="bg/90"
-            backdropFilter="blur(4px)"
-            pointerEvents="auto"
-            w="full"
-          >
-            <Card.Body gap={2} py={3}>
-              <Text fontSize="sm" fontWeight="semibold">
-                Floor reference
-              </Text>
-
-              <Text fontSize="sm" color="fg.muted">
-                Floor Z height:{' '}
-                <Text as="span" fontFamily="mono" color="fg">
-                  {formatCoord(sceneDebug.floorZ)}
-                </Text>
-              </Text>
-
-              <Text fontSize="xs" color="fg.muted" lineHeight="short">
-                Red = +X, green = +Y, blue = +Z. Read vertex positions from the
-                grid; bounds min Z is the floor level.
-              </Text>
-
-              <Stack gap={0.5} fontFamily="mono" fontSize="xs" color="fg.muted">
-                <Text>
-                  min ({formatCoord(sceneDebug.min.x)},{' '}
-                  {formatCoord(sceneDebug.min.y)},{' '}
-                  {formatCoord(sceneDebug.min.z)})
-                </Text>
-
-                <Text>
-                  max ({formatCoord(sceneDebug.max.x)},{' '}
-                  {formatCoord(sceneDebug.max.y)},{' '}
-                  {formatCoord(sceneDebug.max.z)})
-                </Text>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        )}
+        <SceneViewer.LeftPanelReference
+          isVisible={showGridAxes}
+          sceneDebug={sceneDebug}
+        />
       </SceneViewer.LeftPanel>
 
       <RobotStatusPanel robots={robotStatuses} />
 
       <SceneViewer.BottomPanel>
-        <HStack gap={2} align="center" pointerEvents="none">
-          <Tooltip content="Reset orbit origin" showArrow>
-            <IconButton
-              aria-label="Reset orbit origin"
-              size="sm"
-              variant="surface"
-              colorPalette="gray"
-              pointerEvents="auto"
-              disabled={loadState !== 'ready'}
-              onClick={() => resetOrbitRef.current?.()}
-              css={{
-                _icon: {
-                  width: '18px',
-                  height: '18px',
-                },
-              }}
-            >
-              <LuLocateFixed />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip content="Reset all robots" showArrow>
-            <Button
-              size="sm"
-              variant="surface"
-              colorPalette="blue"
-              pointerEvents="auto"
-              disabled={loadState !== 'ready' || robotStatuses.length === 0}
-              onClick={() => resetRobotsRef.current?.()}
-            >
-              Reset robots
-            </Button>
-          </Tooltip>
-
-          <Box
-            px={2.5}
-            py={1.5}
-            rounded="md"
-            bg="bg/80"
-            borderWidth="1px"
-            borderColor="border.subtle"
-            backdropFilter="blur(4px)"
-          >
-            <Text fontSize="xs" color="fg.muted">
-              Hold <Kbd size="sm">Shift</Kbd> to pan
-            </Text>
-          </Box>
-        </HStack>
+        <SceneViewer.BottomPanelStack items={bottomPanelItems} />
       </SceneViewer.BottomPanel>
     </SceneViewer.Root>
   );
