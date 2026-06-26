@@ -5,7 +5,7 @@ import { DropPointPanel } from './components/ui/drop-point-panel';
 import { RobotStatusPanel } from './components/ui/robot-status-panel';
 
 // React imports
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 // Icon imports
@@ -41,6 +41,7 @@ import {
 // API
 import { resolveSceneAssetUrls } from './components/robot-map-scene/scene-asset-api';
 import { fetchRobotConfigs } from './components/robot-map-config/robot-config-api';
+import { createMapClient } from '@/clients/map';
 
 // Robot helpers
 import { getActiveRobotTarget } from './components/robot-map-coordinates/waypoint-utils';
@@ -127,6 +128,8 @@ export function Map() {
   showDropPointRef.current = showDropPoint; // potentially can abstract out
   dropPointRef.current = dropPoint;
 
+  const mapClient = useMemo(() => createMapClient(), []);
+
   // Queries
   const {
     data: robotConfigs,
@@ -134,7 +137,7 @@ export function Map() {
     error: robotConfigError,
   } = useQuery({
     queryKey: ROBOT_CONFIG_QUERY_KEY,
-    queryFn: fetchRobotConfigs,
+    queryFn: () => fetchRobotConfigs(mapClient),
     enabled: robotConfigReady,
     refetchInterval: ROBOT_CONFIG_REFRESH_MS,
     staleTime: 0,
