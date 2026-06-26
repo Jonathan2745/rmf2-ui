@@ -46,11 +46,15 @@ git clone git@gitlab.com:ROSI-AP/rmf2/rmf2-ui.git
 cd rmf2-ui
 ```
 
-Install dependencies & build
+Install dependencies
 
 ```bash
 pnpm install
 ```
+
+> [!NOTE]
+> This command runs all scripts in `prepare` before the package is packed
+> Automatically builds all packages during installation
 
 ## Usage
 
