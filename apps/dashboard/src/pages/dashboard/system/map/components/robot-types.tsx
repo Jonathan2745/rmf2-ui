@@ -107,6 +107,7 @@ export type SceneViewerApi = {
   setDropPointPosition: (position: DropPointCoords) => void;
   setRoofSliceEnabled: (enabled: boolean) => void;
   setRoofSliceHeight: (height: number) => void;
+  setPathLineVisible: (visible: boolean) => void;
 };
 
 export type RobotSyncContext = {
