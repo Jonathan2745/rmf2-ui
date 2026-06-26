@@ -135,6 +135,9 @@ export class NavigationOverlay {
     const pipe = buildPathPipe(this.worldPoints, this.config);
     this.pipeGroup = pipe.group;
     this.pipeMaterials = pipe.materials;
+    // TODO: check if need to remove //
+    this.group.position.z = 0.2;
+    // END TODO //
     this.segmentDirections = pipe.segmentDirections;
     this.segmentStarts = pipe.segmentStarts;
     this.segmentEnds = pipe.segmentEnds;

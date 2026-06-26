@@ -34,6 +34,7 @@ export type NavOverlayConfig = {
   labelMinScreenSize: number;
   labelMaxScreenSize: number;
   cruiseSpeed: number;
+  zOffset?: number;
 };
 
 export type SceneBounds = {
