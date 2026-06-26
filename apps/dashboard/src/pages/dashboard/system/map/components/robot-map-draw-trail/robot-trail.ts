@@ -40,7 +40,7 @@ export function createRobotTrail(
     transparent: true,
     opacity: 0.25,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
     worldUnits: true,
     linewidth: ROBOT_TRAIL_LINE_WIDTH,
   });
@@ -50,7 +50,7 @@ export function createRobotTrail(
     transparent: true,
     opacity: 1,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
     worldUnits: true,
     linewidth: ROBOT_TRAIL_LINE_WIDTH,
   });
