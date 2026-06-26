@@ -5,7 +5,7 @@ import { DropPointPanel } from './components/ui/drop-point-panel';
 import { RobotStatusPanel } from './components/ui/robot-status-panel';
 
 // React imports
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 // Icon imports
@@ -41,7 +41,7 @@ import {
 // API
 import { resolveSceneAssetUrls } from './components/robot-map-scene/scene-asset-api';
 import { fetchRobotConfigs } from './components/robot-map-config/robot-config-api';
-import { createMapClient } from '@/clients/map';
+import { useMapClient } from '@/clients/map';
 
 // Robot helpers
 import { getActiveRobotTarget } from './components/robot-map-coordinates/waypoint-utils';
@@ -131,7 +131,7 @@ export function Map() {
   showPathLineRef.current = showPathLine;
   dropPointRef.current = dropPoint;
 
-  const mapClient = useMemo(() => createMapClient(), []);
+  const mapClient = useMapClient();
 
   // Queries
   const {
@@ -149,7 +149,7 @@ export function Map() {
 
   const { data: resolvedAssetUrls, isPending: isAssetUrlLoading } = useQuery({
     queryKey: SCENE_ASSET_URL_QUERY_KEY,
-    queryFn: resolveSceneAssetUrls,
+    queryFn: () => resolveSceneAssetUrls(mapClient),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
