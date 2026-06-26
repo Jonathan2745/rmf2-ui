@@ -31,6 +31,7 @@ export const END_VIEW_ANGLE = Math.PI / 4;
 
 export const ROBOT_TRAIL_Z_OFFSET = 0.08;
 export const ROBOT_TRAIL_SAMPLE_DISTANCE = 0.25;
+export const ROBOT_TRAIL_LINE_WIDTH = 0.2;
 export const DEFAULT_ROBOT_COLOR = '#00A3FF';
 
 export const INITIAL_SHOW_ROOF_SLICE = true;

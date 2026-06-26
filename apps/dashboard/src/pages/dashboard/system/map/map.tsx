@@ -195,6 +195,13 @@ export function Map() {
       onCheckedChange: setShowRoofSlice,
       disabled: loadState !== 'ready',
     },
+    // {
+    //   id: 'robot-path',
+    //   label: 'Toggle Path',
+    //   checked: ,
+    //   onCheckedChange: ,
+    //   disabled: loadState !== 'ready',
+    // },
   ];
 
   const roofSliceControl: SceneViewerRoofSliceControl = {
