@@ -100,6 +100,7 @@ export function Map() {
     null,
   );
   const showDropPointRef = useRef(false);
+  const showPathLineRef = useRef(true);
   const dropPointRef = useRef<DropPointCoords>({
     x: 0,
     y: 0,
@@ -112,6 +113,7 @@ export function Map() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showGridAxes, setShowGridAxes] = useState(false);
   const [showDropPoint, setShowDropPoint] = useState(false);
+  const [showPathLine, setShowPathLine] = useState(true);
   const [showRoofSlice, setShowRoofSlice] = useState(INITIAL_SHOW_ROOF_SLICE);
   const [roofSliceHeight, setRoofSliceHeight] = useState(
     INITIAL_ROOF_SLICE_HEIGHT,
@@ -126,6 +128,7 @@ export function Map() {
   const [loadingMessage, setLoadingMessage] = useState('Preparing scene...');
   const [loadingProgress, setLoadingProgress] = useState<number | null>(null);
   showDropPointRef.current = showDropPoint; // potentially can abstract out
+  showPathLineRef.current = showPathLine;
   dropPointRef.current = dropPoint;
 
   const mapClient = useMemo(() => createMapClient(), []);
@@ -198,13 +201,13 @@ export function Map() {
       onCheckedChange: setShowRoofSlice,
       disabled: loadState !== 'ready',
     },
-    // {
-    //   id: 'robot-path',
-    //   label: 'Toggle Path',
-    //   checked: ,
-    //   onCheckedChange: ,
-    //   disabled: loadState !== 'ready',
-    // },
+    {
+      id: 'robot-path',
+      label: 'Show path lines',
+      checked: showPathLine,
+      onCheckedChange: setShowPathLine,
+      disabled: loadState !== 'ready',
+    },
   ];
 
   const roofSliceControl: SceneViewerRoofSliceControl = {
@@ -277,7 +280,15 @@ export function Map() {
       floorZ: floorZRef.current,
       publishRobotStatuses,
     });
+
+    if (!showPathLineRef.current) {
+      sceneApiRef.current?.setPathLineVisible(false);
+    }
   }, [robotConfigReady, robotConfigs]);
+
+  useEffect(() => {
+    sceneApiRef.current?.setPathLineVisible(showPathLine);
+  }, [showPathLine, loadState]);
 
   // Sync control panel values with scene API
   useEffect(() => {
@@ -620,6 +631,12 @@ export function Map() {
 
           setRoofSliceHeight(height) {
             roofClipPlane.constant = height;
+          },
+
+          setPathLineVisible(visible) {
+            for (const robot of robots.values()) {
+              if (robot.trail) robot.trail.group.visible = visible;
+            }
           },
         };
 
