@@ -4,7 +4,6 @@ export const MapClientOptions: MapAPI.ClientOptions = {
   baseUrl: import.meta.env.VITE_MAP_BASE,
 };
 
-export function useMapClient() {
-  const client = new MapAPI.Client(MapClientOptions);
-  return client;
+export function createMapClient(): MapAPI.Client {
+  return new MapAPI.Client(MapClientOptions);
 }

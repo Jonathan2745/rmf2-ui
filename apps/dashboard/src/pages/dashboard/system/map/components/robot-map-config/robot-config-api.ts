@@ -1,15 +1,10 @@
+import { type MapAPI } from '@rmf2-ui/client';
 import { type RobotConfig } from '../robot-types';
-import { ROBOTS_CONFIG_URL } from '../constants';
 import { normalizeRobotConfigs } from './robot-config-normalize';
 
-export async function fetchRobotConfigs(): Promise<RobotConfig[]> {
-  const response = await fetch(`${ROBOTS_CONFIG_URL}?t=${Date.now()}`, {
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to load ${ROBOTS_CONFIG_URL}`);
-  }
-
-  return normalizeRobotConfigs(await response.json());
+export async function fetchRobotConfigs(
+  client: MapAPI.Client,
+): Promise<RobotConfig[]> {
+  const response = await client.getRobots();
+  return normalizeRobotConfigs(response);
 }
