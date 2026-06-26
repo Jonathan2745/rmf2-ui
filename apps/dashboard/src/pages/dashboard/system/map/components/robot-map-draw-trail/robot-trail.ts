@@ -1,14 +1,20 @@
 import * as THREE from 'three';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import {
   type RobotRuntime,
   type RobotTrailRuntime,
   type RobotConfig,
 } from '../robot-types';
-import { ROBOT_TRAIL_SAMPLE_DISTANCE } from '../constants';
+import {
+  ROBOT_TRAIL_LINE_WIDTH,
+  ROBOT_TRAIL_SAMPLE_DISTANCE,
+} from '../constants';
 import {
   createLineGeometryFromPoints,
   getRobotColor,
   getRobotPathWorldPoints,
+  toFlatPositions,
   withTrailOffset,
 } from './trail-geometry';
 
@@ -29,30 +35,35 @@ export function createRobotTrail(
     withTrailOffset(startPosition),
   ]);
 
-  const plannedMaterial = new THREE.LineBasicMaterial({
-    color,
+  const plannedMaterial = new LineMaterial({
+    color: color.getHex(),
     transparent: true,
     opacity: 0.25,
     depthWrite: false,
     depthTest: false,
+    worldUnits: true,
+    linewidth: ROBOT_TRAIL_LINE_WIDTH,
   });
 
-  const activeMaterial = new THREE.LineBasicMaterial({
-    color,
+  const activeMaterial = new LineMaterial({
+    color: color.getHex(),
     transparent: true,
     opacity: 1,
     depthWrite: false,
     depthTest: false,
+    worldUnits: true,
+    linewidth: ROBOT_TRAIL_LINE_WIDTH,
   });
 
-  const plannedLine = new THREE.Line(plannedGeometry, plannedMaterial);
-  const activeLine = new THREE.Line(activeGeometry, activeMaterial);
+  const plannedLine = new Line2(plannedGeometry, plannedMaterial);
+  const activeLine = new Line2(activeGeometry, activeMaterial);
 
   plannedLine.name = `planned-path:${config.id}`;
   activeLine.name = `active-trail:${config.id}`;
 
   plannedLine.renderOrder = 20;
   activeLine.renderOrder = 30;
+  activeLine.frustumCulled = false;
 
   group.add(plannedLine);
   group.add(activeLine);
@@ -86,7 +97,9 @@ export function resetRobotTrail(robot: RobotRuntime) {
 
   robot.trail.visitedPoints = [startPoint.clone()];
   robot.trail.lastSampledPoint.copy(startPoint);
-  robot.trail.activeGeometry.setFromPoints([startPoint, startPoint]);
+  robot.trail.activeGeometry.setPositions(
+    toFlatPositions([startPoint, startPoint]),
+  );
   robot.trail.activeGeometry.computeBoundingSphere();
 }
 
@@ -101,6 +114,8 @@ export function updateRobotTrail(robot: RobotRuntime, force = false) {
   robot.trail.visitedPoints.push(currentPoint.clone());
   robot.trail.lastSampledPoint.copy(currentPoint);
 
-  robot.trail.activeGeometry.setFromPoints(robot.trail.visitedPoints);
+  robot.trail.activeGeometry.setPositions(
+    toFlatPositions(robot.trail.visitedPoints),
+  );
   robot.trail.activeGeometry.computeBoundingSphere();
 }
