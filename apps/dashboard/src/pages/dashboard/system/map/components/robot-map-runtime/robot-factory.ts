@@ -50,17 +50,23 @@ export function applyRobotScale(
 
 type CreateRobotArgs = {
   config: RobotConfig;
-  template: THREE.Group;
+  templates: Map<string, THREE.Group>;
   floorZ: number;
   scene: THREE.Scene;
 };
 
 export function createRobot({
   config,
-  template,
+  templates,
   floorZ,
   scene,
 }: CreateRobotArgs): RobotRuntime {
+  const template =
+    templates.get(config.model ?? '') ?? [...templates.values()][0];
+
+  if (!template)
+    throw new Error(`No robot template available for model "${config.model}"`);
+
   const visual = cloneRobotTemplate(template);
 
   // Match the main floor-plan rotation: GLB is usually Y-up, this viewer is Z-up.

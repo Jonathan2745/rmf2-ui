@@ -42,7 +42,7 @@ export function syncRobotsFromConfig({
   configs,
   scene,
   robots,
-  template,
+  templates,
   floorZ,
   publishRobotStatuses,
 }: SyncRobotsFromConfigArgs) {
@@ -64,7 +64,7 @@ export function syncRobotsFromConfig({
     if (!existing) {
       const runtime = createRobot({
         config,
-        template,
+        templates,
         floorZ,
         scene,
       });

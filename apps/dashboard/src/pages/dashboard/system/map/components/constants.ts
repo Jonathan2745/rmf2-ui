@@ -29,6 +29,8 @@ export const INTRO_START_DISTANCE_FACTOR = 1.5;
 export const END_DISTANCE_FACTOR = 0.75;
 export const END_VIEW_ANGLE = Math.PI / 4;
 
+export const DEFAULT_ORGANISATION = 'ros-industrial';
+
 export const ROBOT_TRAIL_Z_OFFSET = 0.08;
 export const ROBOT_TRAIL_SAMPLE_DISTANCE = 0.25;
 export const ROBOT_TRAIL_LINE_WIDTH = 0.2;
