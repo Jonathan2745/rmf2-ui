@@ -1,5 +1,5 @@
 export const SCENE_URL =
-  'https://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/scene.draco.glb';
+  'https://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/scene_color.draco.glb';
 // export const ROBOT_MODEL_URL = '/robot.glb';
 export const AMR_URL =
   'https://downloads.rmf-industrial.org/rmf2-ui/RMF2_SIM_20260611/amr.glb';
