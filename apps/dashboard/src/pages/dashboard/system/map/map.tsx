@@ -1,12 +1,11 @@
 // Custom components
-import { toaster } from '@/components/ui/toaster';
 import { DropPointMarker } from './drop-point-marker';
 import { DropPointPanel } from './components/ui/drop-point-panel';
 import { RobotStatusPanel } from './components/ui/robot-status-panel';
 
 // React imports
-import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 // Icon imports
 import { LuLocateFixed } from 'react-icons/lu';
@@ -15,15 +14,19 @@ import { LuLocateFixed } from 'react-icons/lu';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { ViewportGizmo } from 'three-viewport-gizmo';
 
 // Types
 import type {
   DropPointCoords,
   LoadState,
+  MapGraph,
+  RobotDefinition,
+  RobotPositionResponse,
   RobotRuntime,
   RobotStatus,
+  RobotWaypoint,
   SceneDebugInfo,
   SceneViewerApi,
   StaticCollisionBox,
@@ -31,17 +34,18 @@ import type {
 
 // Constants
 import {
+  AMR_URL,
   DRACO_DECODER_PATH,
   INITIAL_ROOF_SLICE_HEIGHT,
   INITIAL_SHOW_ROOF_SLICE,
   ROBOT_ARRIVAL_EPSILON,
-  ROBOT_CONFIG_REFRESH_MS,
+  SCENE_URL,
 } from './components/constants';
 
 // API
-import { resolveSceneAssetUrls } from './components/robot-map-scene/scene-asset-api';
-import { fetchRobotConfigs } from './components/robot-map-config/robot-config-api';
-import { useMapClient } from '@/clients/map';
+import { mergeRobotConfigs } from './components/robot-map-config/robot-config-merge';
+import { useMapClient, MAP_API_KEY, MapClientError } from '@/clients/map';
+import { toaster } from '@/components/ui/toaster';
 
 // Robot helpers
 import { getActiveRobotTarget } from './components/robot-map-coordinates/waypoint-utils';
@@ -83,8 +87,7 @@ import {
   type SceneViewerToggleControl,
 } from './components/scene-viewer';
 
-const SCENE_ASSET_URL_QUERY_KEY = ['SceneAssetUrls'] as const;
-const ROBOT_CONFIG_QUERY_KEY = ['RobotConfigs'] as const;
+const ROBOT_POSITION_POLL_MS = 500;
 
 export function Map() {
   // Refs
@@ -94,7 +97,7 @@ export function Map() {
   const sceneApiRef = useRef<SceneViewerApi | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const robotsRef = useRef<Map<string, RobotRuntime>>(new globalThis.Map());
-  const robotTemplateRef = useRef<THREE.Group | null>(null);
+  const robotTemplateRef = useRef<Map<string, THREE.Group> | null>(null);
   const floorZRef = useRef(0);
   const publishRobotStatusesRef = useRef<((force?: boolean) => void) | null>(
     null,
@@ -133,26 +136,120 @@ export function Map() {
 
   const mapClient = useMapClient();
 
-  // Queries
+  // Kept current so the Three.js effect can read it without re-triggering
+  const modelUrlMapRef = useRef<Map<string, string>>(new globalThis.Map());
+
+  // ── Queries ────────────────────────────────────────────────────────────────
+
+  // Scene and model URLs are returned synchronously — no fetch needed at query time.
+  // Three.js loader fetches the binary with the auth header set on the loader itself.
+  const sceneUrl = useMemo(() => mapClient.getSceneUrl(), [mapClient]);
+
   const {
-    data: robotConfigs,
-    isError: isRobotConfigError,
-    error: robotConfigError,
-  } = useQuery({
-    queryKey: ROBOT_CONFIG_QUERY_KEY,
-    queryFn: () => fetchRobotConfigs(mapClient),
-    enabled: robotConfigReady,
-    refetchInterval: ROBOT_CONFIG_REFRESH_MS,
-    staleTime: 0,
-    gcTime: 0,
+    data: robotList = [],
+    isError: isRobotListError,
+    error: robotListError,
+  } = useQuery<RobotDefinition[]>({
+    queryKey: ['robots'],
+    queryFn: () => mapClient.getRobotList(),
+    staleTime: Infinity,
+    retry: 1,
   });
 
-  const { data: resolvedAssetUrls, isPending: isAssetUrlLoading } = useQuery({
-    queryKey: SCENE_ASSET_URL_QUERY_KEY,
-    queryFn: () => resolveSceneAssetUrls(mapClient),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+  // Map graph — fetched once, not used for rendering yet
+  useQuery<MapGraph>({
+    queryKey: ['map'],
+    queryFn: () => mapClient.getMap(),
+    staleTime: Infinity,
+    retry: 1,
   });
+
+  const uniqueModels = useMemo(
+    () => [...new Set(robotList.map((r) => r.model))],
+    [robotList],
+  );
+
+  const modelUrlMap = useMemo(() => {
+    const map = new globalThis.Map<string, string>();
+    for (const model of uniqueModels) {
+      map.set(model, mapClient.getModelUrl(model));
+    }
+    return map;
+  }, [uniqueModels, mapClient]);
+  modelUrlMapRef.current = modelUrlMap;
+
+  const pathResults = useQueries({
+    queries: robotList.map((robot) => ({
+      queryKey: ['path', robot.id],
+      queryFn: () => mapClient.getRobotPath(robot.id),
+      staleTime: Infinity,
+      retry: 1,
+    })),
+  });
+
+  const pathMap = useMemo(() => {
+    const map = new globalThis.Map<number, RobotWaypoint[]>();
+    robotList.forEach((robot, i) => {
+      const path = pathResults[i]?.data;
+      if (path) map.set(robot.id, path);
+    });
+    return map;
+  }, [robotList, pathResults]);
+
+  const positionResults = useQueries({
+    queries: robotList.map((robot) => ({
+      queryKey: ['position', robot.id],
+      queryFn: () => mapClient.getRobotPosition(robot.id),
+      refetchInterval: ROBOT_POSITION_POLL_MS,
+      staleTime: 0,
+      gcTime: 0,
+      enabled: robotConfigReady,
+      retry: 0,
+    })),
+  });
+
+  const positionMap = useMemo(() => {
+    const map = new globalThis.Map<number, RobotPositionResponse | null>();
+    robotList.forEach((robot, i) => {
+      map.set(robot.id, positionResults[i]?.data ?? null);
+    });
+    return map;
+  }, [robotList, positionResults]);
+
+  const robotConfigs = useMemo(
+    () => mergeRobotConfigs(robotList, positionMap, pathMap),
+    [robotList, positionMap, pathMap],
+  );
+
+  // ── Error toasts (auth only — network errors fall back silently) ───────────
+
+  useEffect(() => {
+    if (!isRobotListError || !robotListError) return;
+    toaster.create({
+      id: 'map-auth-error',
+      title: 'Authentication failed',
+      description:
+        'The map server rejected the API key. Check VITE_MAP_API_KEY.',
+      type: 'error',
+    });
+  }, [isRobotListError, robotListError]);
+
+  useEffect(() => {
+    const authFailure = positionResults.find(
+      (r) => r.isError && r.error instanceof MapClientError && r.error.isAuth,
+    );
+    if (!authFailure) return;
+    toaster.create({
+      id: 'map-position-auth-error',
+      title: 'Position update rejected',
+      description:
+        'The map server rejected the API key while polling robot positions.',
+      type: 'error',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionResults.map((r) => r.isError).join(',')]);
+
+  const isAssetUrlLoading = false;
 
   const bottomPanelItems: SceneViewerBottomPanelItem[] = [
     {
@@ -221,62 +318,21 @@ export function Map() {
     step: 0.1,
   };
 
-  // Fallback scene asset toaster
-  useEffect(() => {
-    if (!resolvedAssetUrls?.usedFallback) return;
-
-    const toasterId = 'scene-asset-url-fallback';
-
-    if (toaster.isVisible(toasterId)) return;
-
-    toaster.create({
-      id: toasterId,
-      title: 'Using Default Scene Assets',
-      description:
-        resolvedAssetUrls.fallbackReasons.join(' ') ||
-        'Could not get scene asset URLs from the map server.',
-      type: 'warning',
-      duration: 10000,
-      closable: true,
-    });
-  }, [resolvedAssetUrls]);
-
-  // Robot config error toaster
-  useEffect(() => {
-    if (!isRobotConfigError) return;
-
-    const toasterId = 'robot-config-load-error';
-
-    if (toaster.isVisible(toasterId)) return;
-
-    toaster.create({
-      id: toasterId,
-      title: 'Error Loading Robot Config',
-      description:
-        robotConfigError instanceof Error
-          ? `${robotConfigError.name}: ${robotConfigError.message}`
-          : 'Failed to load robot config',
-      type: 'error',
-      duration: 10000,
-      closable: true,
-    });
-  }, [isRobotConfigError, robotConfigError]);
-
   // Sync robot configs into Three.js runtime
   useEffect(() => {
-    if (!robotConfigReady || !robotConfigs) return;
+    if (!robotConfigReady || robotConfigs.length === 0) return;
 
     const scene = sceneRef.current;
-    const template = robotTemplateRef.current;
+    const templates = robotTemplateRef.current;
     const publishRobotStatuses = publishRobotStatusesRef.current;
 
-    if (!scene || !template || !publishRobotStatuses) return;
+    if (!scene || !templates || !publishRobotStatuses) return;
 
     syncRobotsFromConfig({
       configs: robotConfigs,
       scene,
       robots: robotsRef.current,
-      template,
+      templates,
       floorZ: floorZRef.current,
       publishRobotStatuses,
     });
@@ -313,10 +369,7 @@ export function Map() {
 
   // Three.js scene setup
   useEffect(() => {
-    if (!resolvedAssetUrls) return;
-
-    const sceneUrl = resolvedAssetUrls.sceneUrl;
-    const amrUrl = resolvedAssetUrls.amrUrl;
+    if (!sceneUrl) return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -395,6 +448,9 @@ export function Map() {
 
     const loader = new GLTFLoader(loadingManager);
     loader.setDRACOLoader(dracoLoader);
+    if (MAP_API_KEY) {
+      loader.setRequestHeader({ Authorization: `Bearer ${MAP_API_KEY}` });
+    }
 
     let animationFrameId = 0;
     let disposed = false;
@@ -402,7 +458,7 @@ export function Map() {
     let loadedScene: THREE.Group | null = null;
     let gridAxesHelpers: THREE.Group | null = null;
     let dropPointMarker: DropPointMarker | null = null;
-    let robotTemplate: THREE.Group | null = null;
+    let robotTemplates: Map<string, THREE.Group> | null = null;
 
     let staticCollisionBoxes: StaticCollisionBox[] = [];
     let lastRobotStatusPublish = 0;
@@ -571,114 +627,137 @@ export function Map() {
     setLoadingMessage('Loading scene assets ...');
     setLoadingProgress(null);
 
-    loader.load(
-      sceneUrl,
-      async (gltf) => {
-        if (disposed) return;
+    const onSceneLoaded = async (gltf: GLTF) => {
+      if (disposed) return;
 
-        loadedScene = gltf.scene;
+      loadedScene = gltf.scene;
 
-        // GLTF is usually Y-up; rotate to Z-up world convention.
-        gltf.scene.rotation.x = Math.PI / 2;
+      // GLTF is usually Y-up; rotate to Z-up world convention.
+      gltf.scene.rotation.x = Math.PI / 2;
 
-        tuneMaterials(gltf.scene);
-        scene.add(gltf.scene);
+      tuneMaterials(gltf.scene);
+      scene.add(gltf.scene);
 
-        const bounds = computeSceneBounds(gltf.scene);
+      const bounds = computeSceneBounds(gltf.scene);
 
-        currentFloorZ = bounds.floorZ;
-        floorZRef.current = bounds.floorZ;
+      currentFloorZ = bounds.floorZ;
+      floorZRef.current = bounds.floorZ;
 
-        staticCollisionBoxes = collectStaticCollisionBoxes(
-          gltf.scene,
-          bounds.floorZ,
-        );
+      staticCollisionBoxes = collectStaticCollisionBoxes(
+        gltf.scene,
+        bounds.floorZ,
+      );
 
-        gridAxesHelpers = createGridAxesHelpers(bounds);
-        scene.add(gridAxesHelpers);
+      gridAxesHelpers = createGridAxesHelpers(bounds);
+      scene.add(gridAxesHelpers);
 
-        dropPointMarker = new DropPointMarker(bounds.maxDim * 0.012);
-        scene.add(dropPointMarker.mesh);
+      dropPointMarker = new DropPointMarker(bounds.maxDim * 0.012);
+      scene.add(dropPointMarker.mesh);
 
-        const initialDrop: DropPointCoords = {
-          x: (bounds.min.x + bounds.max.x) / 2,
-          y: (bounds.min.y + bounds.max.y) / 2,
-          z: bounds.floorZ,
-        };
+      const initialDrop: DropPointCoords = {
+        x: (bounds.min.x + bounds.max.x) / 2,
+        y: (bounds.min.y + bounds.max.y) / 2,
+        z: bounds.floorZ,
+      };
 
-        dropPointRef.current = initialDrop;
-        dropPointMarker.setPosition(initialDrop);
-        setDropPoint(initialDrop);
+      dropPointRef.current = initialDrop;
+      dropPointMarker.setPosition(initialDrop);
+      setDropPoint(initialDrop);
 
-        sceneApiRef.current = {
-          setShowGridAxes(show) {
-            if (gridAxesHelpers) {
-              gridAxesHelpers.visible = show;
-            }
-          },
+      sceneApiRef.current = {
+        setShowGridAxes(show) {
+          if (gridAxesHelpers) {
+            gridAxesHelpers.visible = show;
+          }
+        },
 
-          setDropPointEnabled(enabled) {
-            dropPointMarker?.setVisible(enabled);
-          },
+        setDropPointEnabled(enabled) {
+          dropPointMarker?.setVisible(enabled);
+        },
 
-          setDropPointPosition(position) {
-            dropPointMarker?.setPosition(position);
-          },
+        setDropPointPosition(position) {
+          dropPointMarker?.setPosition(position);
+        },
 
-          setRoofSliceEnabled(enabled) {
-            renderer.clippingPlanes = enabled ? [roofClipPlane] : [];
-          },
+        setRoofSliceEnabled(enabled) {
+          renderer.clippingPlanes = enabled ? [roofClipPlane] : [];
+        },
 
-          setRoofSliceHeight(height) {
-            roofClipPlane.constant = height;
-          },
+        setRoofSliceHeight(height) {
+          roofClipPlane.constant = height;
+        },
 
-          setPathLineVisible(visible) {
-            for (const robot of robots.values()) {
-              if (robot.trail) robot.trail.group.visible = visible;
-            }
-          },
-        };
+        setPathLineVisible(visible) {
+          for (const robot of robots.values()) {
+            if (robot.trail) robot.trail.group.visible = visible;
+          }
+        },
+      };
 
-        setSceneDebug(toSceneDebugInfo(bounds));
+      setSceneDebug(toSceneDebugInfo(bounds));
 
-        const frame = computeCameraFrame(gltf.scene);
+      const frame = computeCameraFrame(gltf.scene);
 
-        resetOrbitRef.current = () => {
-          frameCamera(camera, controls, gltf.scene);
-        };
+      resetOrbitRef.current = () => {
+        frameCamera(camera, controls, gltf.scene);
+      };
 
-        try {
-          robotTemplate = await loadGltfAsync(loader, amrUrl);
-          tuneMaterials(robotTemplate);
-
-          robotTemplateRef.current = robotTemplate;
-
-          setRobotConfigReady(true);
-        } catch (robotError) {
-          console.error('Robots failed to load', robotError);
-
-          setRobotStatuses([]);
-          robotTemplateRef.current = null;
-          setRobotConfigReady(false);
+      try {
+        const templates = new globalThis.Map<string, THREE.Group>();
+        for (const [model, url] of modelUrlMapRef.current) {
+          let tmpl: THREE.Group;
+          try {
+            tmpl = await loadGltfAsync(loader, url);
+          } catch {
+            // CDN fallback — clear auth header so the browser doesn't send a
+            // preflight that the CDN rejects. All subsequent models will also
+            // fall back since auth is no longer sent.
+            loader.setRequestHeader({});
+            tmpl = await loadGltfAsync(loader, AMR_URL);
+          }
+          tuneMaterials(tmpl);
+          templates.set(model, tmpl);
         }
+        robotTemplates = templates;
+        robotTemplateRef.current = robotTemplates;
+        setRobotConfigReady(true);
+      } catch (robotError) {
+        console.error('Robots failed to load', robotError);
+        setRobotStatuses([]);
+        robotTemplateRef.current = null;
+        setRobotConfigReady(false);
+      }
 
-        if (disposed) return;
+      if (disposed) return;
 
-        setLoadState('ready');
-        animateIntroCamera(camera, controls, frame, () => disposed);
-      },
-      undefined,
-      (error) => {
-        if (disposed) return;
+      setLoadState('ready');
+      animateIntroCamera(camera, controls, frame, () => disposed);
+    };
 
-        const message =
-          error instanceof Error ? error.message : 'Failed to load 3D scene';
-
-        setErrorMessage(message);
+    loader.load(sceneUrl, onSceneLoaded, undefined, () => {
+      // Backend scene URL failed — notify and retry with the CDN fallback
+      if (disposed) return;
+      if (sceneUrl !== SCENE_URL) {
+        toaster.create({
+          id: 'map-offline-fallback',
+          title: 'Map server unreachable',
+          description: 'Showing offline fallback scene and demo robot.',
+          type: 'warning',
+        });
+        // CDN URLs don't support the Authorization header — clear it before
+        // the retry so the browser doesn't send a preflight that the CDN rejects.
+        loader.setRequestHeader({});
+        loader.load(SCENE_URL, onSceneLoaded, undefined, () => {
+          if (!disposed) {
+            setErrorMessage('Failed to load 3D scene');
+            setLoadState('error');
+          }
+        });
+      } else {
+        setErrorMessage('Failed to load 3D scene');
         setLoadState('error');
-      },
-    );
+      }
+    });
 
     return () => {
       disposed = true;
@@ -703,9 +782,11 @@ export function Map() {
 
       robots.clear();
 
-      if (robotTemplate) {
-        disposeObject3D(robotTemplate);
-        robotTemplate = null;
+      if (robotTemplates) {
+        for (const tmpl of robotTemplates.values()) {
+          disposeObject3D(tmpl);
+        }
+        robotTemplates = null;
       }
 
       staticCollisionBoxes = [];
@@ -748,7 +829,7 @@ export function Map() {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [resolvedAssetUrls]);
+  }, [sceneUrl]);
 
   return (
     <SceneViewer.Root ref={containerRef}>
