@@ -42,6 +42,7 @@ export type RobotWaypoint = DropPointCoords & {
 
 export type RobotConfig = {
   id: string;
+  model?: string;
   name?: string;
   position?: Partial<DropPointCoords>;
   target?: Partial<DropPointCoords> | null;
@@ -110,10 +111,41 @@ export type SceneViewerApi = {
   setPathLineVisible: (visible: boolean) => void;
 };
 
+export type RobotDefinition = {
+  id: number;
+  name?: string;
+  model: string;
+};
+
+export type RobotPositionResponse = {
+  id: number;
+  x: number;
+  y: number;
+  theta: number;
+};
+
+export type MapNode = {
+  id: number | string;
+  x: number;
+  y: number;
+  z?: number;
+  label?: string;
+};
+
+export type MapEdge = {
+  from: number | string;
+  to: number | string;
+};
+
+export type MapGraph = {
+  nodes: MapNode[];
+  edges: MapEdge[];
+};
+
 export type RobotSyncContext = {
   scene: THREE.Scene;
   robots: Map<string, RobotRuntime>;
-  template: THREE.Group;
+  templates: Map<string, THREE.Group>;
   floorZ: number;
   publishRobotStatuses: (force?: boolean) => void;
 };
