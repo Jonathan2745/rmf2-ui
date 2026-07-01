@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { RobotConfig, RobotSyncContext } from '../robot-types';
 
 import {
@@ -10,7 +11,6 @@ import { getInitialPathIndex } from '../robot-map-coordinates/waypoint-utils';
 import {
   createRobotTrail,
   disposeRobotTrail,
-  resetRobotTrail,
 } from '../robot-map-draw-trail/robot-trail';
 import { applyRobotScale, createRobot } from './robot-factory';
 import { disposeObject3D } from '../robot-map-scene/scene-dispose';
@@ -116,12 +116,13 @@ export function syncRobotsFromConfig({
         config.coordinateSystem ?? 'navigation',
       );
 
-      existing.root.position.set(position.x, position.y, position.z);
-      existing.pathIndex = getInitialPathIndex(config);
+      // Store as lerp target — the animation loop interpolates toward it
+      // each frame instead of teleporting, which prevents the 500 ms snap.
+      existing.lerpTarget = {
+        position: new THREE.Vector3(position.x, position.y, position.z),
+        rotationZ: config.rotationZ ?? existing.root.rotation.z,
+      };
       existing.lastConfigPositionKey = nextPositionKey;
-      existing.driveState = null;
-
-      resetRobotTrail(existing);
     }
 
     applyRobotScale(existing.root, config.scale);

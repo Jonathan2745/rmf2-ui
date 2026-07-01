@@ -495,6 +495,25 @@ export function Map() {
           continue;
         }
 
+        // Live position mode: smoothly interpolate toward the backend-reported
+        // position rather than path-following. Uses exponential decay so the
+        // robot covers ~95 % of the gap within one poll interval (500 ms).
+        if (robot.lerpTarget) {
+          const alpha = 1 - Math.exp(-10 * deltaSeconds);
+
+          robot.root.position.lerp(robot.lerpTarget.position, alpha);
+
+          // Shortest-path rotation lerp to avoid spinning the wrong way
+          let rotDiff = robot.lerpTarget.rotationZ - robot.root.rotation.z;
+          if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
+          if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
+          robot.root.rotation.z += rotDiff * alpha;
+
+          robot.status = 'moving';
+          updateRobotTrail(robot);
+          continue;
+        }
+
         const activeTarget = getActiveRobotTarget(robot, floorZ);
         if (!activeTarget) continue;
 
