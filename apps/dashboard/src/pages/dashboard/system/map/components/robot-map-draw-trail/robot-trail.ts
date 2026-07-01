@@ -64,6 +64,10 @@ export function createRobotTrail(
   plannedLine.renderOrder = 20;
   activeLine.renderOrder = 30;
   activeLine.frustumCulled = false;
+  // Hide until the robot has moved far enough to produce two distinct points.
+  // A zero-length segment renders both end-caps on top of each other as a
+  // glowing dot, which is distracting at the spawn position.
+  activeLine.visible = false;
 
   group.add(plannedLine);
   group.add(activeLine);
@@ -101,6 +105,7 @@ export function resetRobotTrail(robot: RobotRuntime) {
     toFlatPositions([startPoint, startPoint]),
   );
   robot.trail.activeGeometry.computeBoundingSphere();
+  robot.trail.activeLine.visible = false;
 }
 
 export function updateRobotTrail(robot: RobotRuntime, force = false) {
@@ -118,4 +123,9 @@ export function updateRobotTrail(robot: RobotRuntime, force = false) {
     toFlatPositions(robot.trail.visitedPoints),
   );
   robot.trail.activeGeometry.computeBoundingSphere();
+
+  // Show the line now that we have at least two distinct sampled points.
+  if (!robot.trail.activeLine.visible) {
+    robot.trail.activeLine.visible = true;
+  }
 }
