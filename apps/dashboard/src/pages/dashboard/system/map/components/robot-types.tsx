@@ -95,6 +95,11 @@ export type RobotRuntime = {
   status: RobotMotionStatus;
   lastConfigTrailKey: string;
   trail?: RobotTrailRuntime;
+  /**
+   * Set when a live backend position is available. The animation loop lerps
+   * the robot toward this target instead of running path-following.
+   */
+  lerpTarget?: { position: THREE.Vector3; rotationZ: number };
 };
 
 export type StaticCollisionBox = {
