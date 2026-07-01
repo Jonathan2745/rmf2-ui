@@ -59,16 +59,6 @@ export const AdminRoutes: RouteObject[] = [
       return { Component: Schedule };
     },
   },
-
-  {
-    path: 'tools/lif-editor',
-    lazy: async () => {
-      const { LifEditorPage } = await import(
-        '@/pages/dashboard/tools/lif-editor'
-      );
-      return { Component: LifEditorPage };
-    },
-  },
 ];
 
 export const dashboardRoutes: RouteObject[] = [
