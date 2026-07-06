@@ -55,6 +55,11 @@ export const routes: DashboardRoute[] = [
         path: '/system/map',
         icon: <Icon as={MdMap} width="20px" height="30px" color="inherit" />,
       },
+      {
+        name: 'Map old',
+        path: '/system/map_old',
+        icon: <Icon as={MdMap} width="20px" height="30px" color="inherit" />,
+      },
     ],
   },
 

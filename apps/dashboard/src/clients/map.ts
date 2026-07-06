@@ -5,13 +5,13 @@ import {
   AMR_URL,
   DEFAULT_ORGANISATION,
   SCENE_URL,
-} from '@/pages/dashboard/system/map/components/constants';
+} from '@/pages/dashboard/system/map/components/old/constants';
 import type {
   MapGraph,
   RobotDefinition,
   RobotPositionResponse,
   RobotWaypoint,
-} from '@/pages/dashboard/system/map/components/robot-types';
+} from '@/pages/dashboard/system/map/components/old/robot-types';
 
 export const MapClientOptions: MapAPI.ClientOptions = {
   baseUrl: import.meta.env.VITE_MAP_BASE,
