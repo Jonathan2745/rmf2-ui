@@ -49,6 +49,14 @@ export const AdminRoutes: RouteObject[] = [
           return { Component: Map };
         },
       },
+      {
+        // Map old
+        path: 'map_old',
+        lazy: async () => {
+          const { Map } = await import('@/pages/dashboard/system/map/map_old');
+          return { Component: Map };
+        },
+      },
     ],
   },
 
