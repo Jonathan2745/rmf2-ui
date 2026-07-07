@@ -1,14 +1,26 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useRef, useContext, useState } from 'react';
 import {
   SCENE_URL,
   INITIAL_SHOW_ROOF_SLICE,
   INITIAL_ROOF_SLICE_HEIGHT,
 } from './constants';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { CameraFrame } from './three-utils';
 
 type LoadStatus = 'loading' | 'success' | 'error';
 interface LoadMessage {
   title: string;
   description?: string;
+}
+
+interface SceneContext {
+  scene: THREE.Scene;
+  renderer: THREE.WebGLRenderer;
+  camera: THREE.PerspectiveCamera;
+  controls: OrbitControls;
+  loadingManager: THREE.LoadingManager;
+  roofClipPlane: THREE.Plane;
 }
 
 export interface UseSceneViewerProps {
@@ -33,6 +45,7 @@ export function useSceneViewer(props: UseSceneViewerProps) {
   const sceneUri = sceneUriDefault ?? SCENE_URL;
   const [loadStatus, setLoadStatus] = useState<LoadStatus>('success');
   const [loadMessage, setLoadMessage] = useState<LoadMessage | undefined>();
+  const [orbitOrigin, setOrbitOrigin] = useState<CameraFrame | undefined>();
 
   // TODO(anyone): combine states or switch to using ref for better performance?
   const [showGrid, setShowGrid] = useState<boolean>(showGridDefault ?? true);
@@ -49,8 +62,13 @@ export function useSceneViewer(props: UseSceneViewerProps) {
     roofSliceHeightDefault ?? INITIAL_ROOF_SLICE_HEIGHT,
   );
 
+  const sceneContextRef = useRef<SceneContext>(null);
+
   return {
     sceneUri,
+    sceneContextRef,
+    orbitOrigin,
+    setOrbitOrigin,
     loadStatus,
     setLoadStatus,
     loadMessage,
@@ -87,18 +105,22 @@ const useSceneViewerContext = () => {
 export function useSceneViewerViewport3D() {
   const {
     sceneUri,
+    sceneContextRef,
     showRoofSlice,
     roofSliceHeight,
     setLoadStatus,
     setLoadMessage,
+    setOrbitOrigin,
   } = useSceneViewerContext();
 
   return {
     sceneUri,
+    sceneContextRef,
     showRoofSlice,
     roofSliceHeight,
     setLoadStatus,
     setLoadMessage,
+    setOrbitOrigin,
   };
 }
 
@@ -129,6 +151,16 @@ export function useSceneViewerSceneControl() {
     setShowRoofSlice,
     roofSliceHeight,
     setRoofSliceHeight,
+  };
+}
+
+export function useSceneViewerViewControl() {
+  const { loadStatus, sceneContextRef, orbitOrigin } = useSceneViewerContext();
+
+  return {
+    loadStatus,
+    sceneContextRef,
+    orbitOrigin,
   };
 }
 
