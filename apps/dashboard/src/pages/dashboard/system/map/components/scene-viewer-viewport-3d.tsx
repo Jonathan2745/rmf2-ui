@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { chakra } from '@chakra-ui/react';
 import type { HTMLChakraProps } from '@chakra-ui/react';
 
@@ -11,7 +11,12 @@ import { ViewportGizmo } from 'three-viewport-gizmo';
 
 import { useSceneViewerViewport3D } from './use-scene-viewer';
 import { DRACO_DECODER_PATH } from './constants';
-import { tuneMaterials, disposeScene, frameCamera } from './three-utils';
+import {
+  tuneMaterials,
+  disposeScene,
+  computeCameraFrame,
+  applyCameraFrame,
+} from './three-utils';
 
 // Added for THREE.Cache
 THREE.Cache.enabled = true;
@@ -19,26 +24,18 @@ THREE.Cache.enabled = true;
 export interface SceneViewerViewport3DProps
   extends Omit<HTMLChakraProps<'div'>, 'children'> {}
 
-interface SceneContext {
-  scene: THREE.Scene;
-  renderer: THREE.WebGLRenderer;
-  camera: THREE.PerspectiveCamera;
-  controls: OrbitControls;
-  loadingManager: THREE.LoadingManager;
-  roofClipPlane: THREE.Plane;
-}
-
 export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
   const { ...rest } = props;
 
   const {
     sceneUri,
+    sceneContextRef,
     showRoofSlice,
     roofSliceHeight,
     setLoadStatus,
     setLoadMessage,
+    setOrbitOrigin,
   } = useSceneViewerViewport3D();
-  const sceneContextRef = useRef<SceneContext>(null);
 
   const containerRef = useCallback((node: HTMLDivElement) => {
     if (sceneContextRef.current !== null) {
@@ -119,19 +116,26 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
       roofSliceHeight,
     );
 
-    // Setup aspect ratio
-    const width = node.clientWidth;
-    const height = node.clientHeight;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.setSize(width, height);
-
     // Setup camera
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
     camera.up.set(0, 0, 1);
     camera.position.set(5, -5, 5);
+
+    // Setup aspect ratio
+    const resize = () => {
+      const width = node.clientWidth;
+      const height = node.clientHeight;
+
+      if (width === 0 || height === 0) return;
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(width, height);
+      gizmo.update();
+    };
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(node);
 
     // Setup Controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -142,6 +146,12 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     // Setup Gizmo
     const gizmo = new ViewportGizmo(camera, renderer, {
       container: node,
+      placement: 'bottom-right',
+      size: 100,
+      offset: {
+        right: 20,
+        bottom: 20,
+      },
     });
     gizmo.attachControls(controls);
     gizmo.update();
@@ -199,9 +209,12 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
       tuneMaterials(gltf.scene);
       scene.add(gltf.scene);
 
-      // adjust camera
-      frameCamera(camera, controls, gltf.scene);
+      // adjust camera and set orbit origin
+      const frame = computeCameraFrame(gltf.scene);
+      applyCameraFrame(camera, controls, frame, frame.endPosition);
+      setOrbitOrigin(frame);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneUri]);
 
   // roof slice control
@@ -213,6 +226,7 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     const { renderer, roofClipPlane } = sceneContextRef.current;
     roofClipPlane.constant = roofSliceHeight;
     renderer.clippingPlanes = showRoofSlice ? [roofClipPlane] : [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roofSliceHeight, showRoofSlice]);
 
   return (

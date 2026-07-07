@@ -3,6 +3,8 @@ import { Text, Box, Kbd, IconButton, Button } from '@chakra-ui/react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { SceneViewerPanel } from './scene-viewer-panel';
 import type { SceneViewerPanelProps } from './scene-viewer-panel';
+import { useSceneViewerViewControl } from './use-scene-viewer';
+import { applyCameraFrame } from './three-utils';
 
 export interface SceneViewerViewControlProps extends SceneViewerPanelProps {
   // TODO(anyone): selectively turn on and off controls
@@ -10,13 +12,33 @@ export interface SceneViewerViewControlProps extends SceneViewerPanelProps {
 
 export function SceneViewerViewControl(props: SceneViewerViewControlProps) {
   const { ...rest } = props;
+  const { loadStatus, sceneContextRef, orbitOrigin } =
+    useSceneViewerViewControl();
+
+  const disabled = loadStatus !== 'success';
   const defaultIconButtons = [
     {
       id: 'reset-orbit',
       tooltip: 'Reset Orbit Origin',
       icon: <LuLocateFixed />,
       colorPalette: 'gray',
-      onClick: () => null,
+      onClick: () => {
+        if (orbitOrigin === undefined) {
+          return;
+        }
+        if (!sceneContextRef.current) {
+          return;
+        }
+
+        const { camera, controls } = sceneContextRef.current;
+        applyCameraFrame(
+          camera,
+          controls,
+          orbitOrigin,
+          orbitOrigin.endPosition,
+        );
+      },
+      disabled,
     },
   ];
 
@@ -26,6 +48,7 @@ export function SceneViewerViewControl(props: SceneViewerViewControlProps) {
       tooltip: 'Reset all robot',
       label: 'Reset robots',
       colorPalette: 'blue',
+      disabled,
     },
   ];
 
