@@ -10,7 +10,7 @@ export const SceneViewerPanel = chakra('div', {
     borderRadius: 'l3',
     borderWidth: '1px',
     borderColor: 'border',
-    bg: 'bg/50',
+    bg: 'bg/80',
     backdropFilter: 'blur(4px)',
     padding: 3,
     flex: '1',
@@ -20,14 +20,14 @@ export const SceneViewerPanel = chakra('div', {
   variants: {
     variant: {
       'left-panel': {
-        top: 3,
-        left: 3,
+        top: '20px',
+        left: '20px',
         gap: 3,
         maxW: { base: 'calc(100% - 160px)', md: '280px' },
       },
       'bottom-panel-transparent': {
-        bottom: 3,
-        left: 3,
+        bottom: '20px',
+        left: '20px',
         gap: 2,
         flexDirection: 'row',
         align: 'center',
@@ -37,7 +37,7 @@ export const SceneViewerPanel = chakra('div', {
       },
       'right-panel': {
         top: '96px',
-        right: 3,
+        right: '20px',
         gap: 2.5,
         minW: '240px',
         maxW: '300px',
