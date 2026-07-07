@@ -1,8 +1,7 @@
-import { useState } from 'react';
-
 import { chakra, Stack, Switch, Slider, HStack, Text } from '@chakra-ui/react';
 import { SceneViewerPanel } from './scene-viewer-panel';
 import type { SceneViewerPanelProps } from './scene-viewer-panel';
+import { useSceneViewerSceneControl } from './use-scene-viewer';
 
 export interface SceneViewerToggleControlProps
   extends Omit<Switch.RootProps, 'children'> {
@@ -69,31 +68,57 @@ export interface SceneViewerSceneControlProps extends SceneViewerPanelProps {
 
 export function SceneViewerSceneControl(props: SceneViewerSceneControlProps) {
   const { ...rest } = props;
-  const [roofSliceHeight, setRoofSliceHeight] = useState(3.4);
-  const defaultSceneControlToggles = [
+  const {
+    loadStatus,
+    showGrid,
+    setShowGrid,
+    showDropPoint,
+    setShowDropPoint,
+    showPathLines,
+    setShowPathLines,
+    showRoofSlice,
+    setShowRoofSlice,
+    roofSliceHeight,
+    setRoofSliceHeight,
+  } = useSceneViewerSceneControl();
+  const disabled = loadStatus !== 'success';
+
+  const sceneControlToggles = [
     {
       id: 'grid-axes',
       label: 'Show grid / axes',
-      checked: true,
+      checked: showGrid,
+      onCheckedChange: (event: Switch.CheckedChangeDetails) =>
+        setShowGrid(event.checked),
+      disabled,
     },
     {
       id: 'drop-point',
       label: 'Show drop point',
-      checked: true,
+      checked: showDropPoint,
+      onCheckedChange: (event: Switch.CheckedChangeDetails) =>
+        setShowDropPoint(event.checked),
+      disabled,
     },
     {
       id: 'roof-slice',
       label: 'Slice roof',
-      checked: false,
+      checked: showRoofSlice,
+      onCheckedChange: (event: Switch.CheckedChangeDetails) =>
+        setShowRoofSlice(event.checked),
+      disabled,
     },
     {
       id: 'robot-path',
       label: 'Show path lines',
-      onCheckedChange: () => console.log('hello'),
+      checked: showPathLines,
+      onCheckedChange: (event: Switch.CheckedChangeDetails) =>
+        setShowPathLines(event.checked),
+      disabled,
     },
   ];
 
-  const defaultSceneControlSlider = [
+  const sceneControlSlider = [
     {
       id: 'roof-slice-height',
       label: 'Roof slice height',
@@ -111,10 +136,10 @@ export function SceneViewerSceneControl(props: SceneViewerSceneControlProps) {
       <Text fontSize="sm" fontWeight="semibold">
         Scene controls
       </Text>
-      {defaultSceneControlToggles.map(({ id, ...rest }) => (
+      {sceneControlToggles.map(({ id, ...rest }) => (
         <SceneViewerToggleControl key={id} {...rest} />
       ))}
-      {defaultSceneControlSlider.map(({ id, ...rest }) => (
+      {sceneControlSlider.map(({ id, ...rest }) => (
         <SceneViewerSliderControl key={id} {...rest} />
       ))}
     </SceneViewerPanel>
