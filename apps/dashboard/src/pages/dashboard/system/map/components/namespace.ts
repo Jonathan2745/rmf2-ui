@@ -6,6 +6,7 @@ export { SceneViewerPanel as Panel } from './scene-viewer-panel';
 export { SceneViewerSceneControl as SceneControl } from './scene-viewer-scene-control';
 export { SceneViewerViewControl as ViewControl } from './scene-viewer-view-control';
 export { SceneViewerRobotStatusPanel as RobotStatusPanel } from './scene-viewer-robot-status';
+export { SceneViewerViewport3D as Viewport3D } from './scene-viewer-viewport-3d';
 
 export type { SceneViewerRootProps as RootProps } from './scene-viewer-root';
 export type { SceneViewerLoadingOverlayProps as LoadingOverlayProps } from './scene-viewer-loading-overlay';
