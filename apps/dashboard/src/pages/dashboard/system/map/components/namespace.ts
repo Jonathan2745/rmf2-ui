@@ -2,7 +2,7 @@ export { SceneViewerRoot as Root } from './scene-viewer-root';
 export { SceneViewerLoadingOverlay as LoadingOverlay } from './scene-viewer-loading-overlay';
 export { SceneViewerPanel as Panel } from './scene-viewer-panel';
 
-// TODO(anyone): export all for the following type
+// TODO(anyone): export all for the following type - completed (Jonathan) //
 export { SceneViewerSceneControl as SceneControl } from './scene-viewer-scene-control';
 export { SceneViewerViewControl as ViewControl } from './scene-viewer-view-control';
 export { SceneViewerRobotStatusPanel as RobotStatusPanel } from './scene-viewer-robot-status';
