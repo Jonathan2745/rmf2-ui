@@ -99,12 +99,13 @@ export function SceneViewerRobotStatusItem(
   );
 }
 
-export interface SceneViewerRobotStatusProps extends SceneViewerPanelProps {
+export interface SceneViewerRobotStatusPanelProps
+  extends SceneViewerPanelProps {
   // TODO(anyone): selectively turn on and off controls
 }
 
 export function SceneViewerRobotStatusPanel(
-  props: SceneViewerRobotStatusProps,
+  props: SceneViewerRobotStatusPanelProps,
 ) {
   const { ...rest } = props;
 

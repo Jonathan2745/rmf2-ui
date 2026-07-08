@@ -11,3 +11,8 @@ export { SceneViewerViewport3D as Viewport3D } from './scene-viewer-viewport-3d'
 export type { SceneViewerRootProps as RootProps } from './scene-viewer-root';
 export type { SceneViewerLoadingOverlayProps as LoadingOverlayProps } from './scene-viewer-loading-overlay';
 export type { SceneViewerPanelProps as PanelProps } from './scene-viewer-panel';
+
+export type { SceneViewerSceneControlProps as SceneControlProps } from './scene-viewer-scene-control';
+export type { SceneViewerViewControlProps as ViewControlProps } from './scene-viewer-view-control';
+export type { SceneViewerRobotStatusPanelProps as RobotStatusPanelProps } from './scene-viewer-robot-status';
+export type { SceneViewerViewport3DProps as Viewport3DProps } from './scene-viewer-viewport-3d';
