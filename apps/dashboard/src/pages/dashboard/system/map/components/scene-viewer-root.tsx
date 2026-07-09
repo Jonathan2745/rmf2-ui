@@ -12,6 +12,7 @@ export interface SceneViewerRootProps extends BoxProps, UseSceneViewerProps {}
 export function SceneViewerRoot(props: SceneViewerRootProps) {
   const { children, ...rest } = props as BoxProps;
   const { ...context } = useSceneViewer(props as UseSceneViewerProps);
+  // TODO (Jonathan): fix this lol
   // KNOWN ISSUE (left as-is intentionally): `context` is a fresh object on
   // every render (useSceneViewer returns a new object literal each call), so
   // `Object.is(prevContext, context)` is never true and this useMemo never
