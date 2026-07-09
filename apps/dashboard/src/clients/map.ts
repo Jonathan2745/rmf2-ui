@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { MapAPI } from '@rmf2-ui/client';
 import { toaster } from '@/components/ui/toaster';
 import {
@@ -12,6 +13,8 @@ import type {
   RobotPositionResponse,
   RobotWaypoint,
 } from '@/pages/dashboard/system/map/components/old/robot-types';
+import { ROBOT_POSITION_POLL_MS } from '@/pages/dashboard/system/map/components/constants';
+import type { RobotConfig } from '@/pages/dashboard/system/map/components/robot-types';
 
 export const MapClientOptions: MapAPI.ClientOptions = {
   baseUrl: import.meta.env.VITE_MAP_BASE,
@@ -84,9 +87,25 @@ export interface IMapClient {
   /** Returns the URL to pass to Three.js GLTFLoader (binary route). */
   getModelUrl(robotModel: string): string;
   getRobotPosition(robotId: number): Promise<RobotPositionResponse | null>;
+  /**
+   * Headers to attach to Three.js loader requests for binary routes.
+   * GLTFLoader/DRACOLoader issue their own requests outside this client's
+   * fetch wrapper, so callers must apply these via loader.setRequestHeader().
+   */
+  getRequestHeaders(): Record<string, string>;
 }
 
 // ── LiveMapClient ──────────────────────────────────────────────────────────
+
+// Real /path/{robotId} response shape: { nodes: PathNode[], edges: [...] }.
+// Ground-plane world coordinates (x, y, theta) — no z, unlike RobotWaypoint.
+type PathNode = {
+  id: string | number;
+  x: number;
+  y: number;
+  theta?: number;
+  label?: string;
+};
 
 type SceneAssetUrlResponse = {
   sceneUrl?: string;
@@ -259,9 +278,23 @@ class LiveMapClient implements IMapClient {
   async getRobotPath(robotId: number): Promise<RobotWaypoint[]> {
     try {
       const data = await this._get<
-        { path?: RobotWaypoint[] } | RobotWaypoint[]
+        { path?: RobotWaypoint[] } | { nodes?: PathNode[] } | RobotWaypoint[]
       >(`/path/${robotId}`, `GET /path/${robotId}`);
-      return Array.isArray(data) ? data : (data.path ?? []);
+
+      if (Array.isArray(data)) return data;
+      if ('nodes' in data && data.nodes) {
+        // Real backend shape: { nodes: [{id,x,y,theta,label}], edges: [...] }.
+        // These are already ground-plane world coordinates (no z) — unlike
+        // RobotWaypoint's z field, which callers should ignore for this data.
+        return data.nodes.map((node) => ({
+          id: node.id,
+          x: node.x,
+          y: node.y,
+          z: 0,
+          label: node.label,
+        }));
+      }
+      return 'path' in data ? (data.path ?? []) : [];
     } catch (err) {
       if (err instanceof MapClientError && err.isAuth) throw err;
       return fetchFallbackPath();
@@ -289,6 +322,10 @@ class LiveMapClient implements IMapClient {
       if (err instanceof MapClientError && err.isAuth) throw err;
       return null;
     }
+  }
+
+  getRequestHeaders(): Record<string, string> {
+    return { Authorization: MAP_API_KEY ? `Bearer ${MAP_API_KEY}` : '' };
   }
 }
 
@@ -330,6 +367,10 @@ class FallbackMapClient implements IMapClient {
   async getRobotPosition(): Promise<null> {
     return null;
   }
+
+  getRequestHeaders(): Record<string, string> {
+    return {};
+  }
 }
 
 // ── Hook ───────────────────────────────────────────────────────────────────
@@ -339,4 +380,99 @@ export function useMapClient(): IMapClient {
     if (!MapClientOptions.baseUrl) return new FallbackMapClient();
     return new LiveMapClient();
   }, []);
+}
+
+// ── useMapData ───────────────────────────────────────────────────────────────
+// Colocated with the client: owns the react-query fetching/polling for robot
+// list/path/position and derives render-ready RobotConfig[]. Callers (e.g.
+// the Map page) just call this hook and hand the result to consumers — no
+// context/provider needed, and no data-fetching concern leaks into the
+// SceneViewer component tree, which only renders what it's given.
+
+export type MapData = {
+  mapClient: IMapClient;
+  robotConfigs: RobotConfig[];
+  modelUrlMap: Map<string, string>;
+};
+
+// Prop shape for any component that wants to accept map data (e.g.
+// SceneViewerRootProps extends this alongside UseSceneViewerProps) — kept
+// independent of scene-control/runtime props so map data stays a separate,
+// parallel concern rather than bundled into the scene-viewer's own prop type.
+export interface UseMapProps {
+  mapData?: MapData;
+}
+
+export function useMapData(): MapData {
+  const mapClient = useMapClient();
+
+  const { data: robotList = [] } = useQuery<RobotDefinition[]>({
+    queryKey: ['robots'],
+    queryFn: () => mapClient.getRobotList(),
+    staleTime: Infinity,
+    retry: 1,
+  });
+
+  const uniqueModels = useMemo(
+    () => Array.from(new Set(robotList.map((r) => r.model))),
+    [robotList],
+  );
+
+  const modelUrlMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const model of uniqueModels)
+      map.set(model, mapClient.getModelUrl(model));
+    return map;
+  }, [uniqueModels, mapClient]);
+
+  // `combine` gives referentially-stable results (via structural sharing)
+  // when the underlying data hasn't actually changed — without it, useQueries
+  // returns a fresh array every render regardless of whether any query's
+  // data changed, which cascades into robotConfigs recomputing constantly.
+  const pathByRobot = useQueries({
+    queries: robotList.map((robot) => ({
+      queryKey: ['path', robot.id],
+      queryFn: () => mapClient.getRobotPath(robot.id),
+      staleTime: Infinity,
+      retry: 1,
+    })),
+    combine: (results) => results.map((r) => r.data),
+  });
+
+  const positionByRobot = useQueries({
+    queries: robotList.map((robot) => ({
+      queryKey: ['position', robot.id],
+      queryFn: () => mapClient.getRobotPosition(robot.id),
+      refetchInterval: ROBOT_POSITION_POLL_MS,
+      staleTime: 0,
+      gcTime: 0,
+      retry: 0,
+    })),
+    combine: (results) => results.map((r) => r.data ?? null),
+  });
+
+  const robotConfigs = useMemo<RobotConfig[]>(
+    () =>
+      robotList.map((robot, i) => {
+        const pos = positionByRobot[i];
+        const path = pathByRobot[i];
+
+        return {
+          id: String(robot.id),
+          name: robot.name,
+          model: robot.model,
+          position: pos ? { x: pos.x, y: pos.y } : undefined,
+          rotationZ: pos?.theta,
+          path: path ?? undefined,
+          enabled: true,
+          backendState: pos?.state,
+        };
+      }),
+    [robotList, positionByRobot, pathByRobot],
+  );
+
+  return useMemo(
+    () => ({ mapClient, robotConfigs, modelUrlMap }),
+    [mapClient, robotConfigs, modelUrlMap],
+  );
 }

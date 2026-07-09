@@ -6,16 +6,18 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { ViewportGizmo } from 'three-viewport-gizmo';
 
 import { useSceneViewerViewport3D } from './use-scene-viewer';
+import { updateRobots } from './scene-viewer-robot';
 import { DRACO_DECODER_PATH } from './constants';
 import {
   tuneMaterials,
   disposeScene,
   computeCameraFrame,
   applyCameraFrame,
+  computeSceneBounds,
+  loadGltfAsync,
 } from './three-utils';
 
 // Added for THREE.Cache
@@ -25,16 +27,21 @@ export interface SceneViewerViewport3DProps
   extends Omit<HTMLChakraProps<'div'>, 'children'> {}
 
 export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
+  // TODO(Jonathan): Add useEffect here for the updated map data passed from context provider
+
   const { ...rest } = props;
 
   const {
+    mapClient,
     sceneUri,
     sceneContextRef,
     showRoofSlice,
     roofSliceHeight,
+    robotsRef,
     setLoadStatus,
     setLoadMessage,
     setOrbitOrigin,
+    setFloorZ,
   } = useSceneViewerViewport3D();
 
   const containerRef = useCallback((node: HTMLDivElement) => {
@@ -156,8 +163,12 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     gizmo.attachControls(controls);
     gizmo.update();
 
+    const clock = new THREE.Clock();
+
     function animate() {
+      const deltaSeconds = clock.getDelta();
       controls.update();
+      updateRobots(robotsRef.current, deltaSeconds);
       renderer.render(scene, camera);
       gizmo.render();
     }
@@ -180,7 +191,8 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Loading scene
+  // Loading scene — try the map server first, fall back to the CDN asset
+  // (sceneUri) on failure, mirroring the robot template loader's fallback.
   useEffect(() => {
     if (!sceneContextRef.current) {
       return;
@@ -190,6 +202,7 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
       return;
     }
 
+    let cancelled = false;
     const manager = sceneContextRef.current.loadingManager;
 
     const dracoLoader = new DRACOLoader(manager);
@@ -198,24 +211,51 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     const gltflLoader = new GLTFLoader(manager);
     gltflLoader.setDRACOLoader(dracoLoader);
 
-    gltflLoader.load(sceneUri, (gltf: GLTF) => {
-      if (!sceneContextRef.current) {
-        return;
+    const mapServerUrl = mapClient?.getSceneUrl();
+    if (mapClient) {
+      gltflLoader.setRequestHeader(mapClient.getRequestHeaders());
+    }
+
+    async function load(): Promise<THREE.Group> {
+      if (mapServerUrl && mapServerUrl !== sceneUri) {
+        try {
+          return await loadGltfAsync(gltflLoader, mapServerUrl);
+        } catch {
+          if (cancelled) throw new Error('cancelled');
+          // The CDN fallback rejects a preflight carrying an Authorization
+          // header it doesn't expect, so clear it before retrying.
+          gltflLoader.setRequestHeader({});
+        }
       }
-      const { scene, camera, controls } = sceneContextRef.current;
+      return loadGltfAsync(gltflLoader, sceneUri);
+    }
 
-      // GLTF is usually Y-up; rotate to Z-up world convention.
-      gltf.scene.rotation.x = Math.PI / 2;
-      tuneMaterials(gltf.scene);
-      scene.add(gltf.scene);
+    load()
+      .then((sceneRoot) => {
+        if (cancelled || !sceneContextRef.current) return;
+        const { scene, camera, controls } = sceneContextRef.current;
 
-      // adjust camera and set orbit origin
-      const frame = computeCameraFrame(gltf.scene);
-      applyCameraFrame(camera, controls, frame, frame.endPosition);
-      setOrbitOrigin(frame);
-    });
+        // GLTF is usually Y-up; rotate to Z-up world convention.
+        sceneRoot.rotation.x = Math.PI / 2;
+        tuneMaterials(sceneRoot);
+        scene.add(sceneRoot);
+
+        // adjust camera and set orbit origin
+        const frame = computeCameraFrame(sceneRoot);
+        applyCameraFrame(camera, controls, frame, frame.endPosition);
+        setOrbitOrigin(frame);
+        setFloorZ(computeSceneBounds(sceneRoot).floorZ);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.error('Failed to load scene', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sceneUri]);
+  }, [sceneUri, mapClient]);
 
   // roof slice control
   useEffect(() => {

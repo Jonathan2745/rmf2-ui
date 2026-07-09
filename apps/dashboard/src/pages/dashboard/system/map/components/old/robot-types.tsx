@@ -127,6 +127,8 @@ export type RobotPositionResponse = {
   x: number;
   y: number;
   theta: number;
+  /** Backend-reported motion state, e.g. "driving" | "stopped". */
+  state?: string;
 };
 
 export type MapNode = {

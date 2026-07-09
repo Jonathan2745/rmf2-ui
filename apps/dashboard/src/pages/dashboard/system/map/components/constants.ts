@@ -14,6 +14,7 @@ export const API_BASE_URL =
 export const ROBOTS_CONFIG_URL = `${API_BASE_URL}/api/robots`;
 
 export const ROBOT_CONFIG_REFRESH_MS = 1000;
+export const ROBOT_POSITION_POLL_MS = 500;
 export const ROBOT_ARRIVAL_EPSILON = 0.05;
 export const ROBOT_COLLISION_PADDING = 0.05;
 export const STATIC_COLLISION_IGNORE_NAMES = new Set(['Box128', 'Box127']);
