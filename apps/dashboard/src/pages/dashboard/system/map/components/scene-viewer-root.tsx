@@ -7,6 +7,8 @@ import { useSceneViewer, SceneViewerContext } from './use-scene-viewer';
 
 export interface SceneViewerRootProps extends BoxProps, UseSceneViewerProps {}
 
+// TODO(jonathan): include Robot AMR movement
+
 export function SceneViewerRoot(props: SceneViewerRootProps) {
   const { children, ...rest } = props as BoxProps;
   const { ...context } = useSceneViewer(props as UseSceneViewerProps);
