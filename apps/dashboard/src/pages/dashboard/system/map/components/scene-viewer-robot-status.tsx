@@ -2,6 +2,7 @@ import { Text, Box, HStack } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
 import { SceneViewerPanel } from './scene-viewer-panel';
 import type { SceneViewerPanelProps } from './scene-viewer-panel';
+import { useSceneViewerRobotStatusPanel } from './use-scene-viewer';
 import type {
   WaypointCoords,
   RobotStatus,
@@ -108,28 +109,15 @@ export function SceneViewerRobotStatusPanel(
   props: SceneViewerRobotStatusPanelProps,
 ) {
   const { ...rest } = props;
+  const { robotStatuses } = useSceneViewerRobotStatusPanel();
 
-  const defaultRobotStatuses: RobotStatus[] = [
-    {
-      id: 'my-robot',
-      name: 'My Robot',
-      status: 'idle',
-      position: { x: 1.23, y: 3.21, z: 1.232 },
-      target: { x: 1.42, y: 2.17, z: 9.72 },
-      waypointId: 1,
-      waypointLabel: 'my-waypoint',
-      waypointIndex: 2,
-      waypointCount: 2,
-      blockedBy: 'my other robot',
-    },
-  ];
   return (
     <SceneViewerPanel variant="right-panel" {...rest}>
       <Text fontSize="sm" fontWeight="semibold">
         Robots
       </Text>
 
-      {defaultRobotStatuses.map((robotStatus) => (
+      {robotStatuses.map((robotStatus) => (
         <SceneViewerRobotStatusItem
           key={robotStatus.id}
           robotStatus={robotStatus}

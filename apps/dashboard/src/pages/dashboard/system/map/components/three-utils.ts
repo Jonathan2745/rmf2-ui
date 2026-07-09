@@ -1,10 +1,25 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   INTRO_START_DISTANCE_FACTOR,
   END_DISTANCE_FACTOR,
   END_VIEW_ANGLE,
 } from './constants';
+
+export function loadGltfAsync(
+  loader: GLTFLoader,
+  url: string,
+): Promise<THREE.Group> {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      url,
+      (gltf) => resolve(gltf.scene),
+      undefined,
+      (error) => reject(error),
+    );
+  });
+}
 
 export function tuneMaterials(root: THREE.Object3D) {
   root.traverse((child) => {
@@ -83,6 +98,46 @@ export function disposeScene(
     renderer.dispose();
     renderer.renderLists.dispose(); // Clean internal rendering caches
   }
+}
+
+export type SceneBounds = {
+  min: THREE.Vector3;
+  max: THREE.Vector3;
+  maxDim: number;
+  floorZ: number;
+};
+
+export function computeSceneBounds(root: THREE.Object3D): SceneBounds {
+  const box = new THREE.Box3().setFromObject(root);
+  const min = box.min.clone();
+  const max = box.max.clone();
+  const size = box.getSize(new THREE.Vector3());
+
+  return {
+    min,
+    max,
+    maxDim: Math.max(size.x, size.y, size.z),
+    floorZ: min.z,
+  };
+}
+
+/**
+ * Disposes a single object subtree (geometry + materials) without touching
+ * its parent. Unlike `disposeScene`, this does not remove children from a
+ * scene graph — use it for objects that are being individually removed
+ * (e.g. one robot) or that were never added to `scene` in the first place
+ * (e.g. cached robot template sources, only their clones are added).
+ */
+export function disposeObject3D(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+
+    child.geometry.dispose();
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+    materials.forEach((material) => material.dispose());
+  });
 }
 
 export type CameraFrame = {
