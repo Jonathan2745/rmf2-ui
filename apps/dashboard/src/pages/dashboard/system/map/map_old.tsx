@@ -191,7 +191,7 @@ export function Map() {
     const map = new globalThis.Map<number, RobotWaypoint[]>();
     robotList.forEach((robot, i) => {
       const path = pathResults[i]?.data;
-      if (path) map.set(robot.id, path);
+      if (path) map.set(robot.id, path.waypoints);
     });
     return map;
   }, [robotList, pathResults]);

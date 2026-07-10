@@ -38,6 +38,8 @@ export type RobotConfig = {
   /** Planned path for trail rendering, in `pathCoordinateSystem` source space. */
   path?: RobotWaypoint[];
   pathCoordinateSystem?: RobotPathCoordinateSystem;
+  /** Whether `path` loops back to its first waypoint — closes the rendered polyline. */
+  loop?: boolean;
   enabled?: boolean;
   scale?: number | Partial<WaypointCoords>;
   color?: string;
