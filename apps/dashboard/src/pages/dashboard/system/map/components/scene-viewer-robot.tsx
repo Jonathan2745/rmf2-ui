@@ -14,6 +14,7 @@ import {
   DRACO_DECODER_PATH,
   DEFAULT_ROBOT_COLOR,
   ROBOT_MODEL_HEADING_OFFSET,
+  ROBOT_POSITION_POLL_MS,
   ROBOT_TRAIL_LINE_WIDTH,
   ROBOT_TRAIL_SAMPLE_DISTANCE,
   ROBOT_TRAIL_Z_OFFSET,
@@ -72,11 +73,13 @@ function getInitialRobotPosition(
   return { x: 0, y: 0, z: floorZ };
 }
 
+const MOTION_DURATION_SECONDS = ROBOT_POSITION_POLL_MS / 1000;
+
 // ── Config / diff-key helpers ────────────────────────────────────────────────
 
-function coordKey(position: { x: number; y: number } | undefined): string {
-  if (!position) return '';
-  return `${position.x}:${position.y}`;
+function poseKey(config: RobotConfig): string {
+  if (!config.position) return '';
+  return `${config.position.x}:${config.position.y}:${config.rotationZ ?? ''}`;
 }
 
 function pathKey(path: RobotConfig['path']): string {
@@ -235,6 +238,17 @@ function updateRobotTrail(robot: RobotRuntime, force = false): void {
   }
 }
 
+function shortestAngleDelta(from: number, to: number): number {
+  let delta = to - from;
+  if (delta > Math.PI) delta -= 2 * Math.PI;
+  if (delta < -Math.PI) delta += 2 * Math.PI;
+  return delta;
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 // ── Template lifecycle ───────────────────────────────────────────────────────
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -351,7 +365,7 @@ function createRobot({
     root,
     config,
     status: config.enabled === false ? 'disabled' : 'idle',
-    lastConfigPositionKey: coordKey(config.position),
+    lastConfigPoseKey: poseKey(config),
     lastConfigTrailKey: robotTrailKey(config),
     trail,
   };
@@ -407,7 +421,10 @@ function syncRobotsFromConfig({
 
     existing.name = config.name ?? config.id;
     existing.config = config;
-    if (config.enabled === false) existing.status = 'disabled';
+    if (config.enabled === false) {
+      existing.status = 'disabled';
+      existing.lerpTarget = undefined;
+    }
 
     const nextTrailKey = robotTrailKey(config);
     if (nextTrailKey !== existing.lastConfigTrailKey) {
@@ -420,21 +437,32 @@ function syncRobotsFromConfig({
       existing.lastConfigTrailKey = nextTrailKey;
     }
 
-    const nextPositionKey = coordKey(config.position);
-    if (config.position && nextPositionKey !== existing.lastConfigPositionKey) {
+    if (config.enabled === false) {
+      applyRobotScale(existing.root, config.scale);
+      continue;
+    }
+
+    const nextPoseKey = poseKey(config);
+    if (config.position && nextPoseKey !== existing.lastConfigPoseKey) {
       const worldPosition = livePositionToWorld(config.position);
+      const toRotationZ =
+        config.rotationZ !== undefined
+          ? movementHeadingToModelHeading(config.rotationZ)
+          : existing.root.rotation.z;
+
       existing.lerpTarget = {
-        position: new THREE.Vector3(
+        fromPosition: existing.root.position.clone(),
+        toPosition: new THREE.Vector3(
           worldPosition.x,
           worldPosition.y,
           worldPosition.z,
         ),
-        rotationZ:
-          config.rotationZ !== undefined
-            ? movementHeadingToModelHeading(config.rotationZ)
-            : existing.root.rotation.z,
+        fromRotationZ: existing.root.rotation.z,
+        toRotationZ,
+        elapsedSeconds: 0,
+        durationSeconds: MOTION_DURATION_SECONDS,
       };
-      existing.lastConfigPositionKey = nextPositionKey;
+      existing.lastConfigPoseKey = nextPoseKey;
     }
 
     applyRobotScale(existing.root, config.scale);
@@ -458,14 +486,29 @@ export function updateRobots(
       continue;
     }
 
-    // Exponential decay: ~95% of the gap closed within one 500ms poll interval.
-    const alpha = 1 - Math.exp(-10 * deltaSeconds);
-    robot.root.position.lerp(robot.lerpTarget.position, alpha);
+    const target = robot.lerpTarget;
+    target.elapsedSeconds += deltaSeconds;
 
-    let rotDiff = robot.lerpTarget.rotationZ - robot.root.rotation.z;
-    if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
-    if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
-    robot.root.rotation.z += rotDiff * alpha;
+    const t = Math.min(target.elapsedSeconds / target.durationSeconds, 1);
+    const eased = easeOutCubic(t);
+
+    robot.root.position.lerpVectors(
+      target.fromPosition,
+      target.toPosition,
+      eased,
+    );
+    robot.root.rotation.z =
+      target.fromRotationZ +
+      shortestAngleDelta(target.fromRotationZ, target.toRotationZ) * eased;
+
+    if (t === 1) {
+      robot.root.position.copy(target.toPosition);
+      robot.root.rotation.z = target.toRotationZ;
+      robot.lerpTarget = undefined;
+      robot.status = 'idle';
+      updateRobotTrail(robot, true);
+      continue;
+    }
 
     robot.status = 'moving';
     updateRobotTrail(robot);
