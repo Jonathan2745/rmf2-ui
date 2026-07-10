@@ -6,10 +6,7 @@ import {
   type RobotTrailRuntime,
   type RobotConfig,
 } from '../robot-types';
-import {
-  ROBOT_TRAIL_LINE_WIDTH,
-  ROBOT_TRAIL_SAMPLE_DISTANCE,
-} from '../constants';
+import { ROBOT_TRAIL_LINE_WIDTH } from '../constants';
 import {
   createLineGeometryFromPoints,
   getRobotColor,
@@ -17,6 +14,88 @@ import {
   toFlatPositions,
   withTrailOffset,
 } from './trail-geometry';
+
+function distanceSqToSegment2D(
+  point: THREE.Vector3,
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+
+  if (lengthSq === 0) {
+    const px = point.x - start.x;
+    const py = point.y - start.y;
+    return px * px + py * py;
+  }
+
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq,
+    ),
+  );
+  const projectionX = start.x + t * dx;
+  const projectionY = start.y + t * dy;
+  const px = point.x - projectionX;
+  const py = point.y - projectionY;
+  return px * px + py * py;
+}
+
+function getClosestPathEdge(
+  pathPoints: THREE.Vector3[],
+  robotPosition: THREE.Vector3,
+): { index: number; points: [THREE.Vector3, THREE.Vector3] } | null {
+  if (pathPoints.length < 2) return null;
+
+  let closestIndex = 0;
+  let closestDistanceSq = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < pathPoints.length - 1; i += 1) {
+    const distanceSq = distanceSqToSegment2D(
+      robotPosition,
+      pathPoints[i],
+      pathPoints[i + 1],
+    );
+    if (distanceSq < closestDistanceSq) {
+      closestDistanceSq = distanceSq;
+      closestIndex = i;
+    }
+  }
+
+  return {
+    index: closestIndex,
+    points: [pathPoints[closestIndex], pathPoints[closestIndex + 1]],
+  };
+}
+
+function updateCurrentEdgeLine(
+  trail: RobotTrailRuntime,
+  robotPosition: THREE.Vector3,
+  force = false,
+) {
+  const edge = getClosestPathEdge(trail.pathPoints, robotPosition);
+  if (!edge) {
+    trail.currentEdgeIndex = null;
+    trail.currentEdgeLine.visible = false;
+    return;
+  }
+
+  if (
+    !force &&
+    trail.currentEdgeLine.visible &&
+    trail.currentEdgeIndex === edge.index
+  ) {
+    return;
+  }
+
+  trail.currentEdgeGeometry.setPositions(toFlatPositions(edge.points));
+  trail.currentEdgeGeometry.computeBoundingSphere();
+  trail.currentEdgeIndex = edge.index;
+  trail.currentEdgeLine.visible = true;
+}
 
 export function createRobotTrail(
   config: RobotConfig,
@@ -30,10 +109,7 @@ export function createRobotTrail(
   const plannedPoints = getRobotPathWorldPoints(config, floorZ);
 
   const plannedGeometry = createLineGeometryFromPoints(plannedPoints);
-  const activeGeometry = createLineGeometryFromPoints([
-    withTrailOffset(startPosition),
-    withTrailOffset(startPosition),
-  ]);
+  const currentEdgeGeometry = createLineGeometryFromPoints([]);
 
   const plannedMaterial = new LineMaterial({
     color: color.getHex(),
@@ -45,7 +121,7 @@ export function createRobotTrail(
     linewidth: ROBOT_TRAIL_LINE_WIDTH,
   });
 
-  const activeMaterial = new LineMaterial({
+  const currentEdgeMaterial = new LineMaterial({
     color: color.getHex(),
     transparent: true,
     opacity: 1,
@@ -56,76 +132,56 @@ export function createRobotTrail(
   });
 
   const plannedLine = new Line2(plannedGeometry, plannedMaterial);
-  const activeLine = new Line2(activeGeometry, activeMaterial);
+  const currentEdgeLine = new Line2(currentEdgeGeometry, currentEdgeMaterial);
 
   plannedLine.name = `planned-path:${config.id}`;
-  activeLine.name = `active-trail:${config.id}`;
+  currentEdgeLine.name = `current-edge:${config.id}`;
 
   plannedLine.renderOrder = 20;
-  activeLine.renderOrder = 30;
-  activeLine.frustumCulled = false;
-  // Hide until the robot has moved far enough to produce two distinct points.
-  // A zero-length segment renders both end-caps on top of each other as a
-  // glowing dot, which is distracting at the spawn position.
-  activeLine.visible = false;
+  currentEdgeLine.renderOrder = 30;
+  currentEdgeLine.frustumCulled = false;
+  currentEdgeLine.visible = false;
 
   group.add(plannedLine);
-  group.add(activeLine);
+  group.add(currentEdgeLine);
 
-  const startPoint = withTrailOffset(startPosition);
-
-  return {
+  const trail: RobotTrailRuntime = {
     group,
     plannedLine,
-    activeLine,
+    currentEdgeLine,
     plannedMaterial,
-    activeMaterial,
+    currentEdgeMaterial,
     plannedGeometry,
-    activeGeometry,
-    visitedPoints: [startPoint.clone()],
-    lastSampledPoint: startPoint.clone(),
+    currentEdgeGeometry,
+    pathPoints: plannedPoints,
+    currentEdgeIndex: null,
   };
+
+  updateCurrentEdgeLine(trail, withTrailOffset(startPosition), true);
+  return trail;
 }
 
 export function disposeRobotTrail(trail: RobotTrailRuntime) {
   trail.plannedGeometry.dispose();
-  trail.activeGeometry.dispose();
+  trail.currentEdgeGeometry.dispose();
   trail.plannedMaterial.dispose();
-  trail.activeMaterial.dispose();
+  trail.currentEdgeMaterial.dispose();
 }
 
-export function resetRobotTrail(robot: RobotRuntime) {
+export function resetCurrentEdgeHighlight(robot: RobotRuntime) {
   if (!robot.trail) return;
-
-  const startPoint = withTrailOffset(robot.root.position);
-
-  robot.trail.visitedPoints = [startPoint.clone()];
-  robot.trail.lastSampledPoint.copy(startPoint);
-  robot.trail.activeGeometry.setPositions(
-    toFlatPositions([startPoint, startPoint]),
+  updateCurrentEdgeLine(
+    robot.trail,
+    withTrailOffset(robot.root.position),
+    true,
   );
-  robot.trail.activeGeometry.computeBoundingSphere();
-  robot.trail.activeLine.visible = false;
 }
 
-export function updateRobotTrail(robot: RobotRuntime, force = false) {
+export function updateCurrentEdgeHighlight(robot: RobotRuntime, force = false) {
   if (!robot.trail) return;
-
-  const currentPoint = withTrailOffset(robot.root.position);
-  const distance = currentPoint.distanceTo(robot.trail.lastSampledPoint);
-
-  if (!force && distance < ROBOT_TRAIL_SAMPLE_DISTANCE) return;
-
-  robot.trail.visitedPoints.push(currentPoint.clone());
-  robot.trail.lastSampledPoint.copy(currentPoint);
-
-  robot.trail.activeGeometry.setPositions(
-    toFlatPositions(robot.trail.visitedPoints),
+  updateCurrentEdgeLine(
+    robot.trail,
+    withTrailOffset(robot.root.position),
+    force,
   );
-  robot.trail.activeGeometry.computeBoundingSphere();
-
-  // Show the line now that we have at least two distinct sampled points.
-  if (!robot.trail.activeLine.visible) {
-    robot.trail.activeLine.visible = true;
-  }
 }

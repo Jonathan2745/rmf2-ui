@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { type Line2 } from 'three/addons/lines/Line2.js';
 import { type LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { type LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { type DriveState } from '../differential-drive.demo.ts';
+import { type DriveState } from '../../differential-drive.demo.ts';
 export type LoadState = 'loading' | 'ready' | 'error';
 
 export type CameraFrame = {
@@ -73,13 +73,13 @@ export type RobotStatus = {
 export type RobotTrailRuntime = {
   group: THREE.Group;
   plannedLine: Line2;
-  activeLine: Line2;
+  currentEdgeLine: Line2;
   plannedMaterial: LineMaterial;
-  activeMaterial: LineMaterial;
+  currentEdgeMaterial: LineMaterial;
   plannedGeometry: LineGeometry;
-  activeGeometry: LineGeometry;
-  visitedPoints: THREE.Vector3[];
-  lastSampledPoint: THREE.Vector3;
+  currentEdgeGeometry: LineGeometry;
+  pathPoints: THREE.Vector3[];
+  currentEdgeIndex: number | null;
 };
 
 export type RobotRuntime = {
