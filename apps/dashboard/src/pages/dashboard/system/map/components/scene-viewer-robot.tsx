@@ -36,7 +36,7 @@ function pathCoordsToWorld(
   if (coordinateSystem === 'world') {
     return { x: value.x, y: value.y, z: value.z };
   }
-  return { x: value.x, y: -value.z, z: value.y };
+  return { x: value.x, y: value.y, z: value.z };
 }
 
 function livePositionToWorld(position: {
@@ -93,6 +93,7 @@ function robotTrailKey(config: RobotConfig): string {
   return [
     config.color ?? DEFAULT_ROBOT_COLOR,
     config.pathCoordinateSystem ?? 'navigation',
+    config.loop ? '1' : '0',
     pathKey(config.path),
   ].join('::');
 }
@@ -129,30 +130,33 @@ function getRobotColor(config: RobotConfig): THREE.Color {
   }
 }
 
-function getRobotPathWorldPoints(
-  config: RobotConfig,
-  floorZ: number,
-): THREE.Vector3[] {
-  return (config.path ?? []).map((waypoint) => {
+function getRobotPathWorldPoints(config: RobotConfig): THREE.Vector3[] {
+  const points = (config.path ?? []).map((waypoint) => {
     const world = pathCoordsToWorld(
       waypoint,
-      { x: 0, y: 0, z: floorZ },
+      { x: 0, y: 0, z: 0 },
       config.pathCoordinateSystem,
     );
     return new THREE.Vector3(world.x, world.y, world.z + ROBOT_TRAIL_Z_OFFSET);
   });
+
+  // Close the polyline back to the start when the backend marks this path as looping.
+  if (config.loop && points.length >= 2) {
+    points.push(points[0].clone());
+  }
+
+  return points;
 }
 
 function createRobotTrail(
   config: RobotConfig,
-  floorZ: number,
   startPosition: THREE.Vector3,
 ): RobotTrailRuntime {
   const color = getRobotColor(config);
   const group = new THREE.Group();
   group.name = `trail:${config.id}`;
 
-  const plannedPoints = getRobotPathWorldPoints(config, floorZ);
+  const plannedPoints = getRobotPathWorldPoints(config);
 
   const plannedGeometry = createLineGeometryFromPoints(plannedPoints);
   const activeGeometry = createLineGeometryFromPoints([
@@ -356,7 +360,7 @@ function createRobot({
   root.rotation.z = getInitialModelHeading(config.rotationZ);
 
   scene.add(root);
-  const trail = createRobotTrail(config, floorZ, root.position);
+  const trail = createRobotTrail(config, root.position);
   scene.add(trail.group);
 
   return {
@@ -432,7 +436,7 @@ function syncRobotsFromConfig({
         scene.remove(existing.trail.group);
         disposeRobotTrail(existing.trail);
       }
-      existing.trail = createRobotTrail(config, floorZ, existing.root.position);
+      existing.trail = createRobotTrail(config, existing.root.position);
       scene.add(existing.trail.group);
       existing.lastConfigTrailKey = nextTrailKey;
     }
