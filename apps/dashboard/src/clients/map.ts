@@ -143,7 +143,6 @@ class LiveMapClient implements IMapClient {
     try {
       response = await fetch(`${this._baseUrl}${path}`, {
         headers: this._authHeaders,
-        cache: 'no-store',
       });
     } catch (err) {
       throw new MapClientError(
