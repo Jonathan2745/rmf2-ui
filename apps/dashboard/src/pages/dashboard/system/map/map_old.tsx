@@ -60,7 +60,7 @@ import {
   removeRobot,
   syncRobotsFromConfig,
 } from './components/old/robot-map-runtime/robot-sync';
-import { updateRobotTrail } from './components/old/robot-map-draw-trail/robot-trail';
+import { updateCurrentEdgeHighlight } from './components/old/robot-map-draw-trail/robot-trail';
 
 // Scene helpers
 import { loadGltfAsync } from './components/old/robot-map-scene/gltf-loader';
@@ -510,7 +510,7 @@ export function Map() {
           robot.root.rotation.z += rotDiff * alpha;
 
           robot.status = 'moving';
-          updateRobotTrail(robot);
+          updateCurrentEdgeHighlight(robot);
           continue;
         }
 
@@ -572,12 +572,12 @@ export function Map() {
             robot.status = 'idle';
           }
 
-          updateRobotTrail(robot, true);
+          updateCurrentEdgeHighlight(robot, true);
           continue;
         }
 
         robot.status = 'moving';
-        updateRobotTrail(robot);
+        updateCurrentEdgeHighlight(robot);
       }
 
       publishRobotStatuses();

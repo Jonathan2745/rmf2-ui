@@ -3,7 +3,7 @@ import type { RobotRuntime } from '../robot-types';
 import { ROBOT_MODEL_HEADING_OFFSET } from '../constants';
 import { getInitialPathIndex } from '../robot-map-coordinates/waypoint-utils';
 import { getInitialRobotPosition } from '../robot-map-coordinates/robot-position';
-import { resetRobotTrail } from '../robot-map-draw-trail/robot-trail';
+import { resetCurrentEdgeHighlight } from '../robot-map-draw-trail/robot-trail';
 
 type ResetAllRobotsToStartArgs = {
   robots: Map<string, RobotRuntime>;
@@ -29,7 +29,7 @@ export function resetAllRobotsToStart({
     robot.blockedBy = undefined;
     robot.status = robot.config.enabled === false ? 'disabled' : 'idle';
 
-    resetRobotTrail(robot);
+    resetCurrentEdgeHighlight(robot);
   }
 
   publishRobotStatuses(true);
