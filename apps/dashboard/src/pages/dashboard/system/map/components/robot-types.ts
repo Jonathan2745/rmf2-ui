@@ -58,9 +58,13 @@ export type RobotTrailRuntime = {
 };
 
 export type RobotLerpTarget = {
-  position: THREE.Vector3;
-  /** Model-space rotation.z target (offset already applied). */
-  rotationZ: number;
+  fromPosition: THREE.Vector3;
+  toPosition: THREE.Vector3;
+  /** Model-space rotation.z values (offset already applied). */
+  fromRotationZ: number;
+  toRotationZ: number;
+  elapsedSeconds: number;
+  durationSeconds: number;
 };
 
 export type RobotRuntime = {
@@ -69,7 +73,7 @@ export type RobotRuntime = {
   root: THREE.Group;
   config: RobotConfig;
   status: RobotMotionStatus;
-  lastConfigPositionKey: string;
+  lastConfigPoseKey: string;
   lastConfigTrailKey: string;
   trail?: RobotTrailRuntime;
   lerpTarget?: RobotLerpTarget;
