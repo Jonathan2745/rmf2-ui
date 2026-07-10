@@ -63,6 +63,12 @@ export type ResolvedSceneAssetUrls = {
   fallbackReasons: string[];
 };
 
+export type RobotPath = {
+  waypoints: RobotWaypoint[];
+  /** Whether the path loops back to its first waypoint (closes the rendered polyline). */
+  loop: boolean;
+};
+
 const CDN_FALLBACK: ResolvedSceneAssetUrls = {
   sceneUrl: SCENE_URL,
   amrUrl: AMR_URL,
@@ -83,7 +89,7 @@ export interface IMapClient {
   /** Returns the URL to pass to Three.js GLTFLoader (binary route). */
   getSceneUrl(): string;
   getMap(): Promise<MapGraph>;
-  getRobotPath(robotId: number): Promise<RobotWaypoint[]>;
+  getRobotPath(robotId: number): Promise<RobotPath>;
   /** Returns the URL to pass to Three.js GLTFLoader (binary route). */
   getModelUrl(robotModel: string): string;
   getRobotPosition(robotId: number): Promise<RobotPositionResponse | null>;
@@ -97,7 +103,8 @@ export interface IMapClient {
 
 // ── LiveMapClient ──────────────────────────────────────────────────────────
 
-// Real /path/{robotId} response shape: { nodes: PathNode[], edges: [...] }.
+// Real /path/{robotId} response shape:
+// { nodes: PathNode[], edges: PathEdge[], loop: boolean }.
 // Ground-plane world coordinates (x, y, theta) — no z, unlike RobotWaypoint.
 type PathNode = {
   id: string | number;
@@ -106,6 +113,15 @@ type PathNode = {
   theta?: number;
   label?: string;
 };
+
+// [fromId, toId]. Kept for response typing; path rendering relies on the
+// backend's explicit `loop` boolean instead of inferring from edge topology.
+type PathEdge = [string | number, string | number];
+
+type PathResponse =
+  | { path?: RobotWaypoint[]; loop?: boolean }
+  | { nodes?: PathNode[]; edges?: PathEdge[]; loop?: boolean }
+  | RobotWaypoint[];
 
 type SceneAssetUrlResponse = {
   sceneUrl?: string;
@@ -274,29 +290,39 @@ class LiveMapClient implements IMapClient {
     }
   }
 
-  async getRobotPath(robotId: number): Promise<RobotWaypoint[]> {
+  async getRobotPath(robotId: number): Promise<RobotPath> {
     try {
-      const data = await this._get<
-        { path?: RobotWaypoint[] } | { nodes?: PathNode[] } | RobotWaypoint[]
-      >(`/path/${robotId}`, `GET /path/${robotId}`);
+      const data = await this._get<PathResponse>(
+        `/path/${robotId}`,
+        `GET /path/${robotId}`,
+      );
 
-      if (Array.isArray(data)) return data;
+      if (Array.isArray(data)) return { waypoints: data, loop: false };
+
       if ('nodes' in data && data.nodes) {
-        // Real backend shape: { nodes: [{id,x,y,theta,label}], edges: [...] }.
+        // Real backend shape: { nodes: [{id,x,y,theta,label}], edges, loop }.
         // These are already ground-plane world coordinates (no z) — unlike
         // RobotWaypoint's z field, which callers should ignore for this data.
-        return data.nodes.map((node) => ({
-          id: node.id,
-          x: node.x,
-          y: node.y,
-          z: 0,
-          label: node.label,
-        }));
+        const nodes = data.nodes;
+
+        return {
+          waypoints: nodes.map((node) => ({
+            id: node.id,
+            x: node.x,
+            y: node.y,
+            z: 0,
+            label: node.label,
+          })),
+          loop: data.loop === true,
+        };
       }
-      return 'path' in data ? (data.path ?? []) : [];
+      return {
+        waypoints: 'path' in data ? (data.path ?? []) : [],
+        loop: data.loop === true,
+      };
     } catch (err) {
       if (err instanceof MapClientError && err.isAuth) throw err;
-      return fetchFallbackPath();
+      return { waypoints: await fetchFallbackPath(), loop: false };
     }
   }
 
@@ -355,8 +381,8 @@ class FallbackMapClient implements IMapClient {
     return { nodes: [], edges: [] };
   }
 
-  async getRobotPath(): Promise<RobotWaypoint[]> {
-    return fetchFallbackPath();
+  async getRobotPath(): Promise<RobotPath> {
+    return { waypoints: await fetchFallbackPath(), loop: false };
   }
 
   getModelUrl(): string {
@@ -462,7 +488,8 @@ export function useMapData(): MapData {
           model: robot.model,
           position: pos ? { x: pos.x, y: pos.y } : undefined,
           rotationZ: pos?.theta,
-          path: path ?? undefined,
+          path: path?.waypoints,
+          loop: path?.loop,
           enabled: true,
           backendState: pos?.state,
         };
