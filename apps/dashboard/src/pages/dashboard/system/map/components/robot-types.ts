@@ -2,7 +2,13 @@ import type * as THREE from 'three';
 import type { Line2 } from 'three/addons/lines/Line2.js';
 import type { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import type { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import type { RobotWaypoint } from './old/robot-types';
+
+export type DropPointCoords = { x: number; y: number; z: number };
+
+export type RobotWaypoint = DropPointCoords & {
+  id: string | number;
+  label?: string;
+};
 
 export type WaypointCoords = { x: number; y: number; z: number };
 export type RobotMotionStatus =
@@ -86,4 +92,37 @@ export type RobotSyncContext = {
   robots: Map<string, RobotRuntime>;
   templates: Map<string, THREE.Group>;
   floorZ: number;
+};
+
+export type RobotDefinition = {
+  id: number;
+  name?: string;
+  model: string;
+};
+
+export type RobotPositionResponse = {
+  id: number;
+  x: number;
+  y: number;
+  theta: number;
+  /** Backend-reported motion state, e.g. "driving" | "stopped". */
+  state?: string;
+};
+
+export type MapNode = {
+  id: number | string;
+  x: number;
+  y: number;
+  z?: number;
+  label?: string;
+};
+
+export type MapEdge = {
+  from: number | string;
+  to: number | string;
+};
+
+export type MapGraph = {
+  nodes: MapNode[];
+  edges: MapEdge[];
 };

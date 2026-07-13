@@ -6,13 +6,13 @@ import {
   AMR_URL,
   DEFAULT_ORGANISATION,
   SCENE_URL,
-} from '@/pages/dashboard/system/map/components/old/constants';
+} from '@/pages/dashboard/system/map/components/constants';
 import type {
   MapGraph,
   RobotDefinition,
   RobotPositionResponse,
   RobotWaypoint,
-} from '@/pages/dashboard/system/map/components/old/robot-types';
+} from '@/pages/dashboard/system/map/components/robot-types';
 import { ROBOT_POSITION_POLL_MS } from '@/pages/dashboard/system/map/components/constants';
 import type { RobotConfig } from '@/pages/dashboard/system/map/components/robot-types';
 
