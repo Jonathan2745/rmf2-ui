@@ -27,8 +27,6 @@ export interface SceneViewerViewport3DProps
   extends Omit<HTMLChakraProps<'div'>, 'children'> {}
 
 export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
-  // TODO(Jonathan): Add useEffect here for the updated map data passed from context provider
-
   const { ...rest } = props;
 
   const {

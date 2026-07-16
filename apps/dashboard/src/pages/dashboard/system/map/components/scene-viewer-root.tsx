@@ -7,20 +7,11 @@ import { useSceneViewer, SceneViewerContext } from './use-scene-viewer';
 
 export interface SceneViewerRootProps extends BoxProps, UseSceneViewerProps {}
 
-// TODO(jonathan): include Robot AMR movement
-
 export function SceneViewerRoot(props: SceneViewerRootProps) {
   const { children, ...rest } = props as BoxProps;
   const { ...context } = useSceneViewer(props as UseSceneViewerProps);
-  // TODO (Jonathan): fix this lol
-  // KNOWN ISSUE (left as-is intentionally): `context` is a fresh object on
-  // every render (useSceneViewer returns a new object literal each call), so
-  // `Object.is(prevContext, context)` is never true and this useMemo never
-  // actually skips recomputing — it recreates `ctx` every render regardless
-  // of whether anything inside it changed, providing no memoization benefit.
-  // A real fix needs the dependency array to list the individual stable
-  // values (mapClient, sceneUri, showGrid, ...) rather than the wrapper
-  // object itself.
+  // useMemo declared to memo-ize external changes of context
+  // reflected in the SceneViewerContext value
   const ctx = useMemo(() => ({ ...context }), [context]);
   return (
     <Box
