@@ -441,14 +441,16 @@ export function SceneViewerRobot() {
   // outside the scene graph (only their clones are ever added), so they're
   // the one thing only this component can clean up.
   useEffect(() => {
+    const sceneCtx = sceneContextRef.current;
+    const robots = robotsRef.current;
+
     return () => {
-      const sceneCtx = sceneContextRef.current;
       if (sceneCtx) {
-        for (const id of Array.from(robotsRef.current.keys())) {
-          removeRobot(id, sceneCtx.scene, robotsRef.current);
+        for (const id of Array.from(robots.keys())) {
+          removeRobot(id, sceneCtx.scene, robots);
         }
       }
-      robotsRef.current.clear();
+      robots.clear();
 
       if (robotTemplatesRef.current) {
         for (const template of robotTemplatesRef.current.values()) {
