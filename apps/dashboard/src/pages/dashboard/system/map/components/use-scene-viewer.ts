@@ -38,8 +38,6 @@ const EMPTY_MODEL_URL_MAP = new Map<string, string>();
 
 export interface UseSceneViewerProps extends UseMapProps {
   sceneUri?: string;
-  showGrid?: boolean;
-  showDropPoint?: boolean;
   showPathLines?: boolean;
   showRoofSlice?: boolean;
   roofSliceHeight?: number;
@@ -82,8 +80,6 @@ export function useSceneViewer(props: UseSceneViewerProps) {
   const {
     mapData,
     sceneUri: sceneUriDefault,
-    showGrid: showGridDefault,
-    showDropPoint: showDropPointDefault,
     showPathLines: showPathLinesDefault,
     showRoofSlice: showRoofSliceDefault,
     roofSliceHeight: roofSliceHeightDefault,
@@ -99,10 +95,6 @@ export function useSceneViewer(props: UseSceneViewerProps) {
   const [orbitOrigin, setOrbitOrigin] = useState<CameraFrame | undefined>();
 
   // TODO(anyone): combine states or switch to using ref for better performance?
-  const [showGrid, setShowGrid] = useState<boolean>(showGridDefault ?? true);
-  const [showDropPoint, setShowDropPoint] = useState<boolean>(
-    showDropPointDefault ?? true,
-  );
   const [showPathLines, setShowPathLines] = useState<boolean>(
     showPathLinesDefault ?? true,
   );
@@ -145,10 +137,6 @@ export function useSceneViewer(props: UseSceneViewerProps) {
     setLoadStatus,
     loadMessage,
     setLoadMessage,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,
@@ -241,10 +229,6 @@ export function useSceneViewerRobotStatusPanel() {
 export function useSceneViewerSceneControl() {
   const {
     loadStatus,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,
@@ -255,10 +239,6 @@ export function useSceneViewerSceneControl() {
 
   return {
     loadStatus,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,

@@ -70,10 +70,6 @@ export function SceneViewerSceneControl(props: SceneViewerSceneControlProps) {
   const { ...rest } = props;
   const {
     loadStatus,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,
@@ -84,22 +80,6 @@ export function SceneViewerSceneControl(props: SceneViewerSceneControlProps) {
   const disabled = loadStatus !== 'success';
 
   const sceneControlToggles = [
-    {
-      id: 'grid-axes',
-      label: 'Show grid / axes',
-      checked: showGrid,
-      onCheckedChange: (event: Switch.CheckedChangeDetails) =>
-        setShowGrid(event.checked),
-      disabled,
-    },
-    {
-      id: 'drop-point',
-      label: 'Show drop point',
-      checked: showDropPoint,
-      onCheckedChange: (event: Switch.CheckedChangeDetails) =>
-        setShowDropPoint(event.checked),
-      disabled,
-    },
     {
       id: 'roof-slice',
       label: 'Slice roof',
