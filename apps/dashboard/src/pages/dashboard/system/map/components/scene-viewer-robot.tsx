@@ -403,12 +403,7 @@ export function SceneViewerRobot() {
   useEffect(() => {
     const sceneCtx = sceneContextRef.current;
     const templates = robotTemplatesRef.current;
-    if (
-      !sceneCtx ||
-      !templates ||
-      floorZ === null ||
-      robotConfigs.length === 0
-    ) {
+    if (!sceneCtx || !templates || floorZ === null) {
       return;
     }
 
