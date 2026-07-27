@@ -1,4 +1,4 @@
-import { updateCurrentEdgeHighlight } from './scene-viewer-robot-trail';
+import { updateCurrentEdgeHighlight } from './use-scene-robot-trail';
 import type { RobotRuntime } from './robot-types';
 
 function shortestAngleDelta(from: number, to: number): number {

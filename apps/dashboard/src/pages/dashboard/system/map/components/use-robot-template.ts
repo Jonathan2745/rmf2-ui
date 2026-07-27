@@ -1,12 +1,14 @@
-// Not sure if this shoudld be integrated into use-scene-viewer context
-
 import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import { AMR_URL, DRACO_DECODER_PATH } from './constants';
-import { disposeObject3D, loadGltfAsync, tuneMaterials } from './three-utils';
+import {
+  disposeObject3DCollection,
+  loadGltfAsync,
+  tuneMaterials,
+} from './three-utils';
 import type { UseSceneViewerReturn } from './use-scene-viewer';
 
 async function loadRobotTemplate(
@@ -71,18 +73,14 @@ export function useRobotTemplate({
       .then((templates) => {
         if (cancelled) {
           // Loading cannot necessarily be aborted, so dispose late results.
-          for (const template of templates.values()) {
-            disposeObject3D(template);
-          }
+          disposeObject3DCollection(templates.values());
           return;
         }
 
         const previousTemplates = robotTemplatesRef.current;
 
         if (previousTemplates) {
-          for (const template of previousTemplates.values()) {
-            disposeObject3D(template);
-          }
+          disposeObject3DCollection(previousTemplates.values());
         }
 
         robotTemplatesRef.current = templates;

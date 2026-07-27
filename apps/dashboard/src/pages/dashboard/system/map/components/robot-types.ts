@@ -78,20 +78,17 @@ export type RobotLerpTarget = {
 export type RobotRuntime = {
   id: string;
   name: string;
+  /** Stable transform anchor owned by SceneViewer.RobotRoot. */
   root: THREE.Group;
+  /** Optional cloned model attached by SceneViewer.RobotModels. */
+  visual?: THREE.Group;
   config: RobotConfig;
   status: RobotMotionStatus;
   lastConfigPoseKey: string;
+  lastConfigVisualKey?: string;
   lastConfigTrailKey?: string;
   trail?: RobotTrailRuntime;
   lerpTarget?: RobotLerpTarget;
-};
-
-export type RobotSyncContext = {
-  scene: THREE.Scene;
-  robots: Map<string, RobotRuntime>;
-  templates: Map<string, THREE.Group>;
-  floorZ: number;
 };
 
 export type RobotDefinition = {
@@ -107,22 +104,4 @@ export type RobotPositionResponse = {
   theta: number;
   /** Backend-reported motion state, e.g. "driving" | "stopped". */
   state?: string;
-};
-
-export type MapNode = {
-  id: number | string;
-  x: number;
-  y: number;
-  z?: number;
-  label?: string;
-};
-
-export type MapEdge = {
-  from: number | string;
-  to: number | string;
-};
-
-export type MapGraph = {
-  nodes: MapNode[];
-  edges: MapEdge[];
 };

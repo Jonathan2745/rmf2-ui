@@ -7,6 +7,7 @@ import {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CameraFrame } from './three-utils';
+import { getRobotPosition } from './robot-utils';
 import type { UseMapProps } from '@/clients/map';
 import type {
   RobotConfig,
@@ -61,18 +62,11 @@ function robotMotionStatusFromBackendState(
 }
 
 function robotConfigToStatus(config: RobotConfig): RobotStatus {
-  const firstWaypoint = config.path?.[0];
-  const position = config.position
-    ? { x: config.position.x, y: config.position.y, z: 0 }
-    : firstWaypoint
-      ? { x: firstWaypoint.x, y: firstWaypoint.y, z: firstWaypoint.z }
-      : { x: 0, y: 0, z: 0 };
-
   return {
     id: config.id,
     name: config.name ?? config.id,
     status: robotMotionStatusFromBackendState(config),
-    position,
+    position: getRobotPosition(config),
   };
 }
 
