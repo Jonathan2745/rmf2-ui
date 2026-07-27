@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ViewportGizmo } from 'three-viewport-gizmo';
 
 import { useSceneViewerViewport3D } from './use-scene-viewer';
-import { updateRobots } from './scene-viewer-robot';
+import { updateRobots } from './scene-viewer-robot-runtime';
 import { DRACO_DECODER_PATH } from './constants';
 import {
   tuneMaterials,
@@ -23,8 +23,10 @@ import {
 // Added for THREE.Cache
 THREE.Cache.enabled = true;
 
-export interface SceneViewerViewport3DProps
-  extends Omit<HTMLChakraProps<'div'>, 'children'> {}
+export type SceneViewerViewport3DProps = Omit<
+  HTMLChakraProps<'div'>,
+  'children'
+>;
 
 export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
   const { ...rest } = props;

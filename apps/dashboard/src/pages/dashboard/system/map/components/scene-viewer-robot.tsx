@@ -3,10 +3,7 @@ import type { PropsWithChildren } from 'react';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
-import {
-  removeRobotTrail,
-  updateCurrentEdgeHighlight,
-} from './scene-viewer-robot-trail';
+import { removeRobotTrail } from './scene-viewer-robot-trail';
 import { SceneViewerRobotContext } from './scene-viewer-robot-context';
 import { useSceneViewerRobot } from './use-scene-viewer';
 import { useRobotTemplate } from './use-robot-template';
@@ -50,17 +47,6 @@ function getInitialRobotPosition(
 function poseKey(config: RobotConfig): string {
   if (!config.position) return '';
   return `${config.position.x}:${config.position.y}:${config.rotationZ ?? ''}`;
-}
-
-function shortestAngleDelta(from: number, to: number): number {
-  let delta = to - from;
-  if (delta > Math.PI) delta -= 2 * Math.PI;
-  if (delta < -Math.PI) delta += 2 * Math.PI;
-  return delta;
-}
-
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
 }
 
 // ── Template lifecycle ───────────────────────────────────────────────────────
@@ -242,56 +228,6 @@ function syncRobotsFromConfig({
   }
 
   return robotsChanged;
-}
-
-// ── Per-frame update — imported by SceneViewerViewport3D's animation loop ────
-
-// Kept here with the robot runtime implementation; Viewport3D calls it from
-// its animation loop rather than rendering it as a React component.
-
-export function updateRobots(
-  robots: Map<string, RobotRuntime>,
-  deltaSeconds: number,
-): void {
-  for (const robot of robots.values()) {
-    if (robot.config.enabled === false) {
-      robot.status = 'disabled';
-      continue;
-    }
-
-    if (!robot.lerpTarget) {
-      robot.status = 'idle';
-      updateCurrentEdgeHighlight(robot);
-      continue;
-    }
-
-    const target = robot.lerpTarget;
-    target.elapsedSeconds += deltaSeconds;
-
-    const t = Math.min(target.elapsedSeconds / target.durationSeconds, 1);
-    const eased = easeOutCubic(t);
-
-    robot.root.position.lerpVectors(
-      target.fromPosition,
-      target.toPosition,
-      eased,
-    );
-    robot.root.rotation.z =
-      target.fromRotationZ +
-      shortestAngleDelta(target.fromRotationZ, target.toRotationZ) * eased;
-
-    if (t === 1) {
-      robot.root.position.copy(target.toPosition);
-      robot.root.rotation.z = target.toRotationZ;
-      robot.lerpTarget = undefined;
-      robot.status = 'idle';
-      updateCurrentEdgeHighlight(robot, true);
-      continue;
-    }
-
-    robot.status = 'moving';
-    updateCurrentEdgeHighlight(robot);
-  }
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
