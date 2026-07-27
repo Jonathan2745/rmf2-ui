@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { PropsWithChildren } from 'react';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
 import {
-  createRobotTrail,
-  disposeRobotTrail,
-  robotTrailKey,
+  removeRobotTrail,
   updateCurrentEdgeHighlight,
 } from './scene-viewer-robot-trail';
+import { SceneViewerRobotContext } from './scene-viewer-robot-context';
 import { useSceneViewerRobot } from './use-scene-viewer';
 import { useRobotTemplate } from './use-robot-template';
 import { tuneMaterials, disposeObject3D } from './three-utils';
@@ -142,8 +142,6 @@ function createRobot({
   root.rotation.z = getInitialModelHeading(config.rotationZ);
 
   scene.add(root);
-  const trail = createRobotTrail(config, root.position);
-  scene.add(trail.group);
 
   return {
     id: config.id,
@@ -152,8 +150,6 @@ function createRobot({
     config,
     status: config.enabled === false ? 'disabled' : 'idle',
     lastConfigPoseKey: poseKey(config),
-    lastConfigTrailKey: robotTrailKey(config),
-    trail,
   };
 }
 
@@ -168,10 +164,7 @@ function removeRobot(
   scene.remove(robot.root);
   disposeObject3D(robot.root);
 
-  if (robot.trail) {
-    scene.remove(robot.trail.group);
-    disposeRobotTrail(robot.trail);
-  }
+  removeRobotTrail(robot, scene);
 
   robots.delete(id);
 }
@@ -190,11 +183,15 @@ function syncRobotsFromConfig({
   robots,
   templates,
   floorZ,
-}: SyncRobotsFromConfigArgs): void {
+}: SyncRobotsFromConfigArgs): boolean {
+  let robotsChanged = false;
   const nextIds = new Set(configs.map((config) => config.id));
 
   for (const id of Array.from(robots.keys())) {
-    if (!nextIds.has(id)) removeRobot(id, scene, robots);
+    if (!nextIds.has(id)) {
+      removeRobot(id, scene, robots);
+      robotsChanged = true;
+    }
   }
 
   for (const config of configs) {
@@ -202,6 +199,7 @@ function syncRobotsFromConfig({
 
     if (!existing) {
       robots.set(config.id, createRobot({ config, templates, floorZ, scene }));
+      robotsChanged = true;
       continue;
     }
 
@@ -210,17 +208,6 @@ function syncRobotsFromConfig({
     if (config.enabled === false) {
       existing.status = 'disabled';
       existing.lerpTarget = undefined;
-    }
-
-    const nextTrailKey = robotTrailKey(config);
-    if (nextTrailKey !== existing.lastConfigTrailKey) {
-      if (existing.trail) {
-        scene.remove(existing.trail.group);
-        disposeRobotTrail(existing.trail);
-      }
-      existing.trail = createRobotTrail(config, existing.root.position);
-      scene.add(existing.trail.group);
-      existing.lastConfigTrailKey = nextTrailKey;
     }
 
     if (config.enabled === false) {
@@ -253,9 +240,14 @@ function syncRobotsFromConfig({
 
     applyRobotScale(existing.root, config.scale);
   }
+
+  return robotsChanged;
 }
 
 // ── Per-frame update — imported by SceneViewerViewport3D's animation loop ────
+
+// Kept here with the robot runtime implementation; Viewport3D calls it from
+// its animation loop rather than rendering it as a React component.
 
 export function updateRobots(
   robots: Map<string, RobotRuntime>,
@@ -306,13 +298,13 @@ export function updateRobots(
 
 /**
  * Headless sibling of SceneViewerViewport3D: subscribes to the same
- * SceneViewerContext and owns robot template loading, robot/trail
- * creation-and-sync from live query data, and the "Show path lines" toggle.
- * Renders nothing — it only mutates the shared THREE.Scene (via
- * sceneContextRef) and the shared robotsRef that Viewport3D's render loop
- * reads from every frame via `updateRobots` above.
+ * SceneViewerContext and owns robot template loading and robot instance sync.
+ * Its headless children can use SceneViewerRobotContext to add behavior such
+ * as trail rendering without coupling that lifecycle to robot creation.
  */
-export function SceneViewerRobot() {
+export type SceneViewerRobotProps = PropsWithChildren;
+
+export function SceneViewerRobot({ children }: SceneViewerRobotProps) {
   const {
     mapClient,
     sceneContextRef,
@@ -323,6 +315,7 @@ export function SceneViewerRobot() {
     modelUrlMap,
     showPathLines,
   } = useSceneViewerRobot();
+  const [robotsVersion, setRobotsVersion] = useState(0);
 
   const templatesVersion = useRobotTemplate({
     mapClient,
@@ -339,28 +332,16 @@ export function SceneViewerRobot() {
       return;
     }
 
-    syncRobotsFromConfig({
+    const robotsChanged = syncRobotsFromConfig({
       configs: robotConfigs,
       scene: sceneCtx.scene,
       robots: robotsRef.current,
       templates,
       floorZ,
     });
-
-    // Re-apply the current toggle so a robot created while it's off doesn't
-    // flash visible until the next toggle change.
-    for (const robot of robotsRef.current.values()) {
-      if (robot.trail) robot.trail.group.visible = showPathLines;
-    }
+    if (robotsChanged) setRobotsVersion((version) => version + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [robotConfigs, templatesVersion, floorZ]);
-
-  // "Show path lines" toggle.
-  useEffect(() => {
-    for (const robot of robotsRef.current.values()) {
-      if (robot.trail) robot.trail.group.visible = showPathLines;
-    }
-  }, [robotsRef, showPathLines]);
 
   // Dispose robot templates + clear the runtime map on unmount. Robot roots
   // and trail lines are children of `scene`, so Viewport3D's own unmount
@@ -389,5 +370,20 @@ export function SceneViewerRobot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return null;
+  const robotContext = useMemo(
+    () => ({
+      robotConfigs,
+      robotsRef,
+      robotsVersion,
+      sceneContextRef,
+      showPathLines,
+    }),
+    [robotConfigs, robotsRef, robotsVersion, sceneContextRef, showPathLines],
+  );
+
+  return (
+    <SceneViewerRobotContext value={robotContext}>
+      {children}
+    </SceneViewerRobotContext>
+  );
 }

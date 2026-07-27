@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import * as THREE from 'three';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
@@ -15,6 +16,7 @@ import type {
   RobotTrailRuntime,
   WaypointCoords,
 } from './robot-types';
+import { useSceneViewerRobotContext } from './scene-viewer-robot-context';
 
 function pathCoordsToWorld(
   value: WaypointCoords | undefined,
@@ -27,7 +29,6 @@ function pathCoordsToWorld(
   }
   return { x: value.x, y: value.y, z: value.z };
 }
-
 function pathKey(path: RobotConfig['path']): string {
   if (!path?.length) return '';
   return path
@@ -39,12 +40,16 @@ function pathKey(path: RobotConfig['path']): string {
 }
 
 export function robotTrailKey(config: RobotConfig): string {
-  return [
-    config.color ?? DEFAULT_ROBOT_COLOR,
-    config.pathCoordinateSystem ?? 'navigation',
-    config.loop ? '1' : '0',
-    pathKey(config.path),
-  ].join('::');
+  const {
+    color = DEFAULT_ROBOT_COLOR,
+    pathCoordinateSystem = 'navigation',
+    loop = false,
+    path,
+  } = config;
+
+  return [color, pathCoordinateSystem, loop ? '1' : '0', pathKey(path)].join(
+    '::',
+  );
 }
 
 function withTrailOffset(point: THREE.Vector3): THREE.Vector3 {
@@ -243,6 +248,18 @@ export function disposeRobotTrail(trail: RobotTrailRuntime): void {
   trail.currentEdgeMaterial.dispose();
 }
 
+export function removeRobotTrail(
+  robot: RobotRuntime,
+  scene: THREE.Scene,
+): void {
+  if (!robot.trail) return;
+
+  scene.remove(robot.trail.group);
+  disposeRobotTrail(robot.trail);
+  robot.trail = undefined;
+  robot.lastConfigTrailKey = undefined;
+}
+
 export function updateCurrentEdgeHighlight(
   robot: RobotRuntime,
   force = false,
@@ -253,4 +270,58 @@ export function updateCurrentEdgeHighlight(
     withTrailOffset(robot.root.position),
     force,
   );
+}
+
+/**
+ * Headless child of SceneViewer.SceneRobot that owns trail creation, updates,
+ * visibility, and disposal for every active robot runtime.
+ */
+export function SceneViewerRobotTrails() {
+  const {
+    robotConfigs,
+    robotsRef,
+    robotsVersion,
+    sceneContextRef,
+    showPathLines,
+  } = useSceneViewerRobotContext();
+
+  useEffect(() => {
+    const scene = sceneContextRef.current?.scene;
+    if (!scene) return;
+
+    const configsById = new Map(
+      robotConfigs.map((config) => [config.id, config]),
+    );
+
+    for (const robot of robotsRef.current.values()) {
+      const config = configsById.get(robot.id);
+
+      if (!config) {
+        removeRobotTrail(robot, scene);
+        continue;
+      }
+
+      const nextTrailKey = robotTrailKey(config);
+      if (nextTrailKey !== robot.lastConfigTrailKey) {
+        removeRobotTrail(robot, scene);
+        robot.trail = createRobotTrail(config, robot.root.position);
+        robot.lastConfigTrailKey = nextTrailKey;
+        scene.add(robot.trail.group);
+      }
+
+      if (robot.trail) robot.trail.group.visible = showPathLines;
+    }
+  }, [robotConfigs, robotsRef, robotsVersion, sceneContextRef, showPathLines]);
+
+  useEffect(() => {
+    const scene = sceneContextRef.current?.scene;
+    const robots = robotsRef.current;
+
+    return () => {
+      if (!scene) return;
+      for (const robot of robots.values()) removeRobotTrail(robot, scene);
+    };
+  }, [robotsRef, sceneContextRef]);
+
+  return null;
 }

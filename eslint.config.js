@@ -5,7 +5,7 @@ import { defineConfig } from 'eslint/config';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 
 import reactHooks from 'eslint-plugin-react-hooks';
-// import reactRefresh from 'eslint-plugin-react-refresh';
+import reactRefresh from 'eslint-plugin-react-refresh';
 import react from 'eslint-plugin-react';
 
 export default defineConfig([
@@ -26,7 +26,7 @@ export default defineConfig([
     plugins: {
       react,
       'react-hooks': reactHooks,
-      // 'react-refresh': reactRefresh,
+      'react-refresh': reactRefresh,
     },
     rules: {
       ...react.configs.recommended.rules,

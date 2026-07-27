@@ -10,7 +10,9 @@ export function Map() {
     <Card>
       <SceneViewer.Root mapData={mapData}>
         <SceneViewer.Viewport3D />
-        <SceneViewer.SceneRobot />
+        <SceneViewer.SceneRobot>
+          <SceneViewer.RobotTrails />
+        </SceneViewer.SceneRobot>
         <SceneViewer.SceneControl />
         <SceneViewer.ViewControl />
         <SceneViewer.RobotStatusPanel />
