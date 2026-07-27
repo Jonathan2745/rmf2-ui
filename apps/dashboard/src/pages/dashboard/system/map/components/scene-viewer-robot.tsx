@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
   createRobotTrail,
@@ -11,12 +9,11 @@ import {
   updateCurrentEdgeHighlight,
 } from './scene-viewer-robot-trail';
 import { useSceneViewerRobot } from './use-scene-viewer';
-import { tuneMaterials, disposeObject3D, loadGltfAsync } from './three-utils';
+import { useRobotTemplates } from './use-robot-template';
+import { tuneMaterials, disposeObject3D } from './three-utils';
 import {
-  AMR_URL,
-  DRACO_DECODER_PATH,
   ROBOT_MODEL_HEADING_OFFSET,
-  ROBOT_POSITION_POLL_MS,
+  MOTION_DURATION_SECONDS,
 } from './constants';
 import type { WaypointCoords, RobotConfig, RobotRuntime } from './robot-types';
 
@@ -49,8 +46,6 @@ function getInitialRobotPosition(
 
   return { x: 0, y: 0, z: floorZ };
 }
-
-const MOTION_DURATION_SECONDS = ROBOT_POSITION_POLL_MS / 1000;
 
 function poseKey(config: RobotConfig): string {
   if (!config.position) return '';
@@ -91,34 +86,6 @@ function cloneRobotTemplate(template: THREE.Group): THREE.Group {
   });
 
   return cloned;
-}
-
-async function loadRobotTemplates(
-  loader: GLTFLoader,
-  modelUrlMap: Map<string, string>,
-  fallbackUrl: string,
-  requestHeaders: Record<string, string>,
-): Promise<Map<string, THREE.Group>> {
-  const templates = new Map<string, THREE.Group>();
-
-  for (const [model, url] of modelUrlMap) {
-    let tmpl: THREE.Group;
-    try {
-      // Restore the auth header before each attempt — a previous model's
-      // CDN fallback (below) may have cleared it on this shared loader.
-      loader.setRequestHeader(requestHeaders);
-      tmpl = await loadGltfAsync(loader, url);
-    } catch {
-      // The CDN fallback rejects a preflight carrying an Authorization header
-      // it doesn't expect, so clear it before retrying against the CDN asset.
-      loader.setRequestHeader({});
-      tmpl = await loadGltfAsync(loader, fallbackUrl);
-    }
-    tuneMaterials(tmpl);
-    templates.set(model, tmpl);
-  }
-
-  return templates;
 }
 
 function applyRobotScale(root: THREE.Group, scale: RobotConfig['scale']): void {
@@ -357,47 +324,12 @@ export function SceneViewerRobot() {
     showPathLines,
   } = useSceneViewerRobot();
 
-  const [templatesVersion, setTemplatesVersion] = useState(0);
-
-  // Load robot GLTF templates whenever the set of models changes.
-  useEffect(() => {
-    if (!mapClient) return;
-    if (modelUrlMap.size === 0) return;
-    if (!sceneContextRef.current) return;
-
-    let cancelled = false;
-    const { loadingManager } = sceneContextRef.current;
-
-    const robotDracoLoader = new DRACOLoader(loadingManager);
-    robotDracoLoader.setDecoderPath(DRACO_DECODER_PATH);
-    const robotLoader = new GLTFLoader(loadingManager);
-    robotLoader.setDRACOLoader(robotDracoLoader);
-
-    loadRobotTemplates(
-      robotLoader,
-      modelUrlMap,
-      AMR_URL,
-      mapClient.getRequestHeaders(),
-    )
-      .then((templates) => {
-        if (cancelled) return;
-        const previous = robotTemplatesRef.current;
-        if (previous) {
-          for (const template of previous.values()) disposeObject3D(template);
-        }
-        robotTemplatesRef.current = templates;
-        setTemplatesVersion((v) => v + 1);
-      })
-      .catch((error: unknown) => {
-        console.error('Failed to load robot templates', error);
-      })
-      .finally(() => robotDracoLoader.dispose());
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapClient, modelUrlMap]);
+  const templatesVersion = useRobotTemplates({
+    mapClient,
+    modelUrlMap,
+    robotTemplatesRef,
+    sceneContextRef,
+  });
 
   // Sync robot instances from the latest query-derived configs.
   useEffect(() => {
