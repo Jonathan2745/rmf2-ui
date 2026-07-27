@@ -10,9 +10,11 @@ export function Map() {
     <Card>
       <SceneViewer.Root mapData={mapData}>
         <SceneViewer.Viewport3D />
-        <SceneViewer.SceneRobot>
+        <SceneViewer.RobotRoot>
+          {/* Headless subscribers to context provided by RobotRoot */}
+          <SceneViewer.RobotModels />
           <SceneViewer.RobotTrails />
-        </SceneViewer.SceneRobot>
+        </SceneViewer.RobotRoot>
         <SceneViewer.SceneControl />
         <SceneViewer.ViewControl />
         <SceneViewer.RobotStatusPanel />

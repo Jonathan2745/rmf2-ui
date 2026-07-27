@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { MapAPI } from '@rmf2-ui/client';
 import { toaster } from '@/components/ui/toaster';
 import {
   AMR_URL,
-  DEFAULT_ORGANISATION,
   SCENE_URL,
 } from '@/pages/dashboard/system/map/components/constants';
 import type {
-  MapGraph,
   RobotDefinition,
   RobotPositionResponse,
   RobotWaypoint,
@@ -16,12 +13,8 @@ import type {
 import { ROBOT_POSITION_POLL_MS } from '@/pages/dashboard/system/map/components/constants';
 import type { RobotConfig } from '@/pages/dashboard/system/map/components/robot-types';
 
-export const MapClientOptions: MapAPI.ClientOptions = {
-  baseUrl: import.meta.env.VITE_MAP_BASE,
-};
-
-// Exported so the Three.js GLTFLoader can set the same header for binary routes
-export const MAP_API_KEY: string = import.meta.env.VITE_MAP_API_KEY ?? '';
+const MAP_BASE_URL: string = import.meta.env.VITE_MAP_BASE ?? '';
+const MAP_API_KEY: string = import.meta.env.VITE_MAP_API_KEY ?? '';
 
 // ── Offline fallback data ───────────────────────────────────────────────────
 
@@ -56,39 +49,18 @@ export class MapClientError extends Error {
 
 // ── Shared types ───────────────────────────────────────────────────────────
 
-export type ResolvedSceneAssetUrls = {
-  sceneUrl: string;
-  amrUrl: string;
-  usedFallback: boolean;
-  fallbackReasons: string[];
-};
-
 export type RobotPath = {
   waypoints: RobotWaypoint[];
   /** Whether the path loops back to its first waypoint (closes the rendered polyline). */
   loop: boolean;
 };
 
-const CDN_FALLBACK: ResolvedSceneAssetUrls = {
-  sceneUrl: SCENE_URL,
-  amrUrl: AMR_URL,
-  usedFallback: true,
-  fallbackReasons: [],
-};
-
 // ── Interface ──────────────────────────────────────────────────────────────
 
 export interface IMapClient {
-  // Legacy (used by LIF editor and other existing features)
-  getRobots(): Promise<MapAPI.RobotsResponse>;
-  getSceneAssets(): Promise<ResolvedSceneAssetUrls>;
-
-  // New routes — org is inferred server-side from the Bearer token
-  getOrganisation(): Promise<string>;
   getRobotList(): Promise<RobotDefinition[]>;
   /** Returns the URL to pass to Three.js GLTFLoader (binary route). */
   getSceneUrl(): string;
-  getMap(): Promise<MapGraph>;
   getRobotPath(robotId: number): Promise<RobotPath>;
   /** Returns the URL to pass to Three.js GLTFLoader (binary route). */
   getModelUrl(robotModel: string): string;
@@ -123,30 +95,13 @@ type PathResponse =
   | { nodes?: PathNode[]; edges?: PathEdge[]; loop?: boolean }
   | RobotWaypoint[];
 
-type SceneAssetUrlResponse = {
-  sceneUrl?: string;
-  scene_url?: string;
-  amrUrl?: string;
-  amr_url?: string;
-};
-
-function toAbsoluteAssetUrl(url: string, baseUrl: string): string {
-  try {
-    return new URL(url, `${baseUrl}/`).toString();
-  } catch {
-    return url;
-  }
-}
-
 class LiveMapClient implements IMapClient {
-  private readonly _inner: MapAPI.Client;
   private readonly _baseUrl: string;
   private readonly _authHeaders: HeadersInit;
   private _serverReachable = true;
 
   constructor() {
-    this._inner = new MapAPI.Client(MapClientOptions);
-    this._baseUrl = (MapClientOptions.baseUrl ?? '').replace(/\/$/, '');
+    this._baseUrl = MAP_BASE_URL.replace(/\/$/, '');
     this._authHeaders = {
       Authorization: MAP_API_KEY ? `Bearer ${MAP_API_KEY}` : '',
       Accept: 'application/json',
@@ -187,72 +142,6 @@ class LiveMapClient implements IMapClient {
     return response.json() as Promise<T>;
   }
 
-  // ── Legacy ─────────────────────────────────────────────────────────────
-
-  async getRobots(): Promise<MapAPI.RobotsResponse> {
-    try {
-      return await this._inner.getRobots();
-    } catch {
-      return { robots: [], coordinateSystem: 'navigation' };
-    }
-  }
-
-  async getSceneAssets(): Promise<ResolvedSceneAssetUrls> {
-    try {
-      const response = await fetch(`${this._baseUrl}/scene-assets`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch scene asset URLs: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const assetUrls: SceneAssetUrlResponse = await response.json();
-      const fallbackReasons: string[] = [];
-
-      const rawSceneUrl = assetUrls.sceneUrl ?? assetUrls.scene_url;
-      const rawAmrUrl = assetUrls.amrUrl ?? assetUrls.amr_url;
-
-      if (!rawSceneUrl)
-        fallbackReasons.push('Map server did not return a scene URL.');
-      if (!rawAmrUrl)
-        fallbackReasons.push('Map server did not return an AMR URL.');
-
-      return {
-        sceneUrl: rawSceneUrl
-          ? toAbsoluteAssetUrl(rawSceneUrl, this._baseUrl)
-          : SCENE_URL,
-        amrUrl: rawAmrUrl
-          ? toAbsoluteAssetUrl(rawAmrUrl, this._baseUrl)
-          : AMR_URL,
-        usedFallback: !rawSceneUrl || !rawAmrUrl,
-        fallbackReasons,
-      };
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch scene asset URLs from map server.';
-
-      return { ...CDN_FALLBACK, fallbackReasons: [message] };
-    }
-  }
-
-  // ── New routes ──────────────────────────────────────────────────────────
-
-  async getOrganisation(): Promise<string> {
-    const data = await this._get<unknown>('/organisation', 'GET /organisation');
-    return typeof data === 'string'
-      ? data
-      : String(
-          (data as { organisation?: string }).organisation ??
-            DEFAULT_ORGANISATION,
-        );
-  }
-
   async getRobotList(): Promise<RobotDefinition[]> {
     try {
       const data = await this._get<
@@ -279,15 +168,6 @@ class LiveMapClient implements IMapClient {
    */
   getSceneUrl(): string {
     return `${this._baseUrl}/scene`;
-  }
-
-  async getMap(): Promise<MapGraph> {
-    try {
-      return await this._get<MapGraph>('/map', 'GET /map');
-    } catch (err) {
-      if (err instanceof MapClientError && err.isAuth) throw err;
-      return { nodes: [], edges: [] };
-    }
   }
 
   async getRobotPath(robotId: number): Promise<RobotPath> {
@@ -357,28 +237,12 @@ class LiveMapClient implements IMapClient {
 // ── FallbackMapClient ──────────────────────────────────────────────────────
 
 class FallbackMapClient implements IMapClient {
-  async getRobots(): Promise<MapAPI.RobotsResponse> {
-    return { robots: [], coordinateSystem: 'navigation' };
-  }
-
-  async getSceneAssets(): Promise<ResolvedSceneAssetUrls> {
-    return CDN_FALLBACK;
-  }
-
-  async getOrganisation(): Promise<string> {
-    return DEFAULT_ORGANISATION;
-  }
-
   async getRobotList(): Promise<RobotDefinition[]> {
     return FALLBACK_ROBOT_LIST;
   }
 
   getSceneUrl(): string {
     return SCENE_URL;
-  }
-
-  async getMap(): Promise<MapGraph> {
-    return { nodes: [], edges: [] };
   }
 
   async getRobotPath(): Promise<RobotPath> {
@@ -402,17 +266,15 @@ class FallbackMapClient implements IMapClient {
 
 export function useMapClient(): IMapClient {
   return useMemo(() => {
-    if (!MapClientOptions.baseUrl) return new FallbackMapClient();
+    if (!MAP_BASE_URL) return new FallbackMapClient();
     return new LiveMapClient();
   }, []);
 }
 
 // ── useMapData ───────────────────────────────────────────────────────────────
 // Colocated with the client: owns the react-query fetching/polling for robot
-// list/path/position and derives render-ready RobotConfig[]. Callers (e.g.
-// the Map page) just call this hook and hand the result to consumers — no
-// context/provider needed, and no data-fetching concern leaks into the
-// SceneViewer component tree, which only renders what it's given.
+// list/path/position and derives render-ready RobotConfig[]. The Map page hands
+// this data to SceneViewer.Root, which exposes it to the rendering components.
 
 export type MapData = {
   mapClient: IMapClient;
