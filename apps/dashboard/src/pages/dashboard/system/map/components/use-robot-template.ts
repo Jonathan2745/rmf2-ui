@@ -9,7 +9,7 @@ import { AMR_URL, DRACO_DECODER_PATH } from './constants';
 import { disposeObject3D, loadGltfAsync, tuneMaterials } from './three-utils';
 import type { UseSceneViewerReturn } from './use-scene-viewer';
 
-async function loadRobotTemplates(
+async function loadRobotTemplate(
   loader: GLTFLoader,
   modelUrlMap: Map<string, string>,
   fallbackUrl: string,
@@ -40,7 +40,7 @@ type UseRobotTemplatesArgs = Pick<
   'mapClient' | 'modelUrlMap' | 'robotTemplatesRef' | 'sceneContextRef'
 >;
 
-export function useRobotTemplates({
+export function useRobotTemplate({
   mapClient,
   modelUrlMap,
   robotTemplatesRef,
@@ -62,7 +62,7 @@ export function useRobotTemplates({
     const robotLoader = new GLTFLoader(loadingManager);
     robotLoader.setDRACOLoader(dracoLoader);
 
-    loadRobotTemplates(
+    loadRobotTemplate(
       robotLoader,
       modelUrlMap,
       AMR_URL,

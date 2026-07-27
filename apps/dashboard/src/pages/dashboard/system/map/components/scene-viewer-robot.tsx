@@ -9,7 +9,7 @@ import {
   updateCurrentEdgeHighlight,
 } from './scene-viewer-robot-trail';
 import { useSceneViewerRobot } from './use-scene-viewer';
-import { useRobotTemplates } from './use-robot-template';
+import { useRobotTemplate } from './use-robot-template';
 import { tuneMaterials, disposeObject3D } from './three-utils';
 import {
   ROBOT_MODEL_HEADING_OFFSET,
@@ -324,7 +324,7 @@ export function SceneViewerRobot() {
     showPathLines,
   } = useSceneViewerRobot();
 
-  const templatesVersion = useRobotTemplates({
+  const templatesVersion = useRobotTemplate({
     mapClient,
     modelUrlMap,
     robotTemplatesRef,
