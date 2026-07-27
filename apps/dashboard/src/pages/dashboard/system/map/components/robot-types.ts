@@ -82,7 +82,7 @@ export type RobotRuntime = {
   config: RobotConfig;
   status: RobotMotionStatus;
   lastConfigPoseKey: string;
-  lastConfigTrailKey: string;
+  lastConfigTrailKey?: string;
   trail?: RobotTrailRuntime;
   lerpTarget?: RobotLerpTarget;
 };
