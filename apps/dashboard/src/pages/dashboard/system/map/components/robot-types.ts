@@ -37,7 +37,7 @@ export type RobotConfig = {
   id: string;
   model?: string;
   name?: string;
-  /** Live world-space (x, y) from backend telemetry — direct mapping, no remap. */
+  /** Live world-space position from backend or fallback telemetry. */
   position?: { x: number; y: number };
   /** Live heading (radians), "movement" convention — model-heading offset applied downstream. */
   rotationZ?: number;

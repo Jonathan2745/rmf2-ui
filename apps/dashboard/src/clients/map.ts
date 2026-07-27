@@ -1,37 +1,17 @@
 import { useMemo } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { toaster } from '@/components/ui/toaster';
-import {
-  AMR_URL,
-  SCENE_URL,
-} from '@/pages/dashboard/system/map/components/constants';
+import { ROBOT_POSITION_POLL_MS } from '@/pages/dashboard/system/map/components/constants';
 import type {
   RobotDefinition,
   RobotPositionResponse,
   RobotWaypoint,
 } from '@/pages/dashboard/system/map/components/robot-types';
-import { ROBOT_POSITION_POLL_MS } from '@/pages/dashboard/system/map/components/constants';
 import type { RobotConfig } from '@/pages/dashboard/system/map/components/robot-types';
+import { FallbackMapClient } from './fallback-map';
 
 const MAP_BASE_URL: string = import.meta.env.VITE_MAP_BASE ?? '';
 const MAP_API_KEY: string = import.meta.env.VITE_MAP_API_KEY ?? '';
-
-// ── Offline fallback data ───────────────────────────────────────────────────
-
-const FALLBACK_ROBOT_LIST: RobotDefinition[] = [
-  { id: 1, name: 'AMR Demo', model: 'amr' },
-];
-
-async function fetchFallbackPath(): Promise<RobotWaypoint[]> {
-  try {
-    const res = await fetch('/navigation-path.json');
-    if (!res.ok) return [];
-    const data = (await res.json()) as { path?: RobotWaypoint[] };
-    return data.path ?? [];
-  } catch {
-    return [];
-  }
-}
 
 // ── Error type ─────────────────────────────────────────────────────────────
 
@@ -72,6 +52,8 @@ export interface IMapClient {
    */
   getRequestHeaders(): Record<string, string>;
 }
+
+const fallbackMapClient: IMapClient = new FallbackMapClient();
 
 // ── LiveMapClient ──────────────────────────────────────────────────────────
 
@@ -158,7 +140,7 @@ class LiveMapClient implements IMapClient {
         description: 'Showing offline fallback scene and demo robot.',
         type: 'warning',
       });
-      return FALLBACK_ROBOT_LIST;
+      return fallbackMapClient.getRobotList();
     }
   }
 
@@ -167,7 +149,9 @@ class LiveMapClient implements IMapClient {
    * directly using the auth header set via loader.setRequestHeader.
    */
   getSceneUrl(): string {
-    return `${this._baseUrl}/scene`;
+    return this._serverReachable
+      ? `${this._baseUrl}/scene`
+      : fallbackMapClient.getSceneUrl();
   }
 
   async getRobotPath(robotId: number): Promise<RobotPath> {
@@ -202,7 +186,7 @@ class LiveMapClient implements IMapClient {
       };
     } catch (err) {
       if (err instanceof MapClientError && err.isAuth) throw err;
-      return { waypoints: await fetchFallbackPath(), loop: false };
+      return fallbackMapClient.getRobotPath(robotId);
     }
   }
 
@@ -211,13 +195,16 @@ class LiveMapClient implements IMapClient {
    * directly using the auth header set via loader.setRequestHeader.
    */
   getModelUrl(robotModel: string): string {
-    return `${this._baseUrl}/models/${encodeURIComponent(robotModel)}`;
+    return this._serverReachable
+      ? `${this._baseUrl}/models/${encodeURIComponent(robotModel)}`
+      : fallbackMapClient.getModelUrl(robotModel);
   }
 
   async getRobotPosition(
     robotId: number,
   ): Promise<RobotPositionResponse | null> {
-    if (!this._serverReachable) return null;
+    if (!this._serverReachable)
+      return fallbackMapClient.getRobotPosition(robotId);
     try {
       return await this._get<RobotPositionResponse>(
         `/position/${robotId}`,
@@ -230,35 +217,9 @@ class LiveMapClient implements IMapClient {
   }
 
   getRequestHeaders(): Record<string, string> {
-    return { Authorization: MAP_API_KEY ? `Bearer ${MAP_API_KEY}` : '' };
-  }
-}
-
-// ── FallbackMapClient ──────────────────────────────────────────────────────
-
-class FallbackMapClient implements IMapClient {
-  async getRobotList(): Promise<RobotDefinition[]> {
-    return FALLBACK_ROBOT_LIST;
-  }
-
-  getSceneUrl(): string {
-    return SCENE_URL;
-  }
-
-  async getRobotPath(): Promise<RobotPath> {
-    return { waypoints: await fetchFallbackPath(), loop: false };
-  }
-
-  getModelUrl(): string {
-    return AMR_URL;
-  }
-
-  async getRobotPosition(): Promise<null> {
-    return null;
-  }
-
-  getRequestHeaders(): Record<string, string> {
-    return {};
+    return this._serverReachable
+      ? { Authorization: MAP_API_KEY ? `Bearer ${MAP_API_KEY}` : '' }
+      : fallbackMapClient.getRequestHeaders();
   }
 }
 
@@ -266,7 +227,7 @@ class FallbackMapClient implements IMapClient {
 
 export function useMapClient(): IMapClient {
   return useMemo(() => {
-    if (!MAP_BASE_URL) return new FallbackMapClient();
+    if (!MAP_BASE_URL) return fallbackMapClient;
     return new LiveMapClient();
   }, []);
 }

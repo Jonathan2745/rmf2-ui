@@ -12,7 +12,11 @@ export function getRobotPosition(
   fallbackZ = 0,
 ): WaypointCoords {
   if (config.position) {
-    return { x: config.position.x, y: config.position.y, z: 0 };
+    return {
+      x: config.position.x,
+      y: config.position.y,
+      z: config.path?.[0]?.z ?? fallbackZ,
+    };
   }
 
   const startWaypoint = config.path?.[0];
