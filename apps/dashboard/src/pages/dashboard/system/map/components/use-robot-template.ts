@@ -15,7 +15,6 @@ async function loadRobotTemplate(
   loader: GLTFLoader,
   modelUrlMap: Map<string, string>,
   fallbackUrl: string,
-  requestHeaders: Record<string, string>,
 ): Promise<Map<string, THREE.Group>> {
   const templates = new Map<string, THREE.Group>();
 
@@ -23,10 +22,8 @@ async function loadRobotTemplate(
     let template: THREE.Group;
 
     try {
-      loader.setRequestHeader(requestHeaders);
       template = await loadGltfAsync(loader, url);
     } catch {
-      loader.setRequestHeader({});
       template = await loadGltfAsync(loader, fallbackUrl);
     }
 
@@ -64,12 +61,7 @@ export function useRobotTemplate({
     const robotLoader = new GLTFLoader(loadingManager);
     robotLoader.setDRACOLoader(dracoLoader);
 
-    loadRobotTemplate(
-      robotLoader,
-      modelUrlMap,
-      AMR_URL,
-      mapClient.getRequestHeaders(),
-    )
+    loadRobotTemplate(robotLoader, modelUrlMap, AMR_URL)
       .then((templates) => {
         if (cancelled) {
           // Loading cannot necessarily be aborted, so dispose late results.

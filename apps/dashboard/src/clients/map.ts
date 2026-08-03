@@ -11,7 +11,6 @@ import type { RobotConfig } from '@/pages/dashboard/system/map/components/robot-
 import { FallbackMapClient } from './fallback-map';
 
 const MAP_BASE_URL: string = import.meta.env.VITE_MAP_BASE ?? '';
-const MAP_API_KEY: string = import.meta.env.VITE_MAP_API_KEY ?? '';
 
 // ── Error type ─────────────────────────────────────────────────────────────
 
@@ -19,7 +18,6 @@ export class MapClientError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    public readonly isAuth: boolean = false,
     public readonly isNetwork: boolean = false,
   ) {
     super(message);
@@ -45,12 +43,6 @@ export interface IMapClient {
   /** Returns the URL to pass to Three.js GLTFLoader (binary route). */
   getModelUrl(robotModel: string): string;
   getRobotPosition(robotId: number): Promise<RobotPositionResponse | null>;
-  /**
-   * Headers to attach to Three.js loader requests for binary routes.
-   * GLTFLoader/DRACOLoader issue their own requests outside this client's
-   * fetch wrapper, so callers must apply these via loader.setRequestHeader().
-   */
-  getRequestHeaders(): Record<string, string>;
 }
 
 const fallbackMapClient: IMapClient = new FallbackMapClient();
@@ -79,37 +71,21 @@ type PathResponse =
 
 class LiveMapClient implements IMapClient {
   private readonly _baseUrl: string;
-  private readonly _authHeaders: HeadersInit;
   private _serverReachable = true;
 
   constructor() {
     this._baseUrl = MAP_BASE_URL.replace(/\/$/, '');
-    this._authHeaders = {
-      Authorization: MAP_API_KEY ? `Bearer ${MAP_API_KEY}` : '',
-      Accept: 'application/json',
-    };
   }
 
   private async _get<T>(path: string, label: string): Promise<T> {
     let response: Response;
 
     try {
-      response = await fetch(`${this._baseUrl}${path}`, {
-        headers: this._authHeaders,
-      });
+      response = await fetch(`${this._baseUrl}${path}`);
     } catch (err) {
       throw new MapClientError(
         `${label}: network error — ${err instanceof Error ? err.message : 'fetch failed'}`,
         undefined,
-        false,
-        true,
-      );
-    }
-
-    if (response.status === 401 || response.status === 403) {
-      throw new MapClientError(
-        `${label}: unauthorized (${response.status})`,
-        response.status,
         true,
       );
     }
@@ -131,8 +107,7 @@ class LiveMapClient implements IMapClient {
       >('/robots', 'GET /robots');
       // Handle both bare-array and wrapped { robots: [...] } response shapes
       return Array.isArray(data) ? data : (data.robots ?? []);
-    } catch (err) {
-      if (err instanceof MapClientError && err.isAuth) throw err;
+    } catch {
       this._serverReachable = false;
       toaster.create({
         id: 'map-offline-fallback',
@@ -144,10 +119,7 @@ class LiveMapClient implements IMapClient {
     }
   }
 
-  /**
-   * Returns the backend URL for the scene GLB. Three.js loader fetches it
-   * directly using the auth header set via loader.setRequestHeader.
-   */
+  /** Returns the backend URL for the scene GLB. */
   getSceneUrl(): string {
     return this._serverReachable
       ? `${this._baseUrl}/scene`
@@ -184,16 +156,12 @@ class LiveMapClient implements IMapClient {
         waypoints: 'path' in data ? (data.path ?? []) : [],
         loop: data.loop === true,
       };
-    } catch (err) {
-      if (err instanceof MapClientError && err.isAuth) throw err;
+    } catch {
       return fallbackMapClient.getRobotPath(robotId);
     }
   }
 
-  /**
-   * Returns the backend URL for a robot model GLB. Three.js loader fetches it
-   * directly using the auth header set via loader.setRequestHeader.
-   */
+  /** Returns the backend URL for a robot model GLB. */
   getModelUrl(robotModel: string): string {
     return this._serverReachable
       ? `${this._baseUrl}/models/${encodeURIComponent(robotModel)}`
@@ -210,16 +178,9 @@ class LiveMapClient implements IMapClient {
         `/position/${robotId}`,
         `GET /position/${robotId}`,
       );
-    } catch (err) {
-      if (err instanceof MapClientError && err.isAuth) throw err;
+    } catch {
       return null;
     }
-  }
-
-  getRequestHeaders(): Record<string, string> {
-    return this._serverReachable
-      ? { Authorization: MAP_API_KEY ? `Bearer ${MAP_API_KEY}` : '' }
-      : fallbackMapClient.getRequestHeaders();
   }
 }
 

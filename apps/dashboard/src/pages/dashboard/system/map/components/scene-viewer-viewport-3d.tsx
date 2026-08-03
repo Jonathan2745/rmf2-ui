@@ -212,9 +212,6 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     gltflLoader.setDRACOLoader(dracoLoader);
 
     const mapServerUrl = mapClient?.getSceneUrl();
-    if (mapClient) {
-      gltflLoader.setRequestHeader(mapClient.getRequestHeaders());
-    }
 
     async function load(): Promise<THREE.Group> {
       if (mapServerUrl && mapServerUrl !== sceneUri) {
@@ -222,9 +219,6 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
           return await loadGltfAsync(gltflLoader, mapServerUrl);
         } catch {
           if (cancelled) throw new Error('cancelled');
-          // The CDN fallback rejects a preflight carrying an Authorization
-          // header it doesn't expect, so clear it before retrying.
-          gltflLoader.setRequestHeader({});
         }
       }
       return loadGltfAsync(gltflLoader, sceneUri);

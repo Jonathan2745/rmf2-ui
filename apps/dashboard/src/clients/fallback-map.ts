@@ -146,8 +146,4 @@ export class FallbackMapClient implements IMapClient {
       (Date.now() - fallbackMotionStartedAtMs) / 1000,
     );
   }
-
-  getRequestHeaders(): Record<string, string> {
-    return {};
-  }
 }
