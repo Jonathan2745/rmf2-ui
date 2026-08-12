@@ -1,7 +1,7 @@
 import type { HTMLChakraProps } from '@chakra-ui/react';
 import { chakra } from '@chakra-ui/react';
 
-export interface LifEditorContentProps extends HTMLChakraProps<'div'> {}
+export type LifEditorContentProps = HTMLChakraProps<'div'>;
 
 export const LifEditorContent = chakra('div', {
   base: {

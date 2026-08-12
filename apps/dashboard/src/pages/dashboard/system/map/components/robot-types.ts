@@ -2,7 +2,13 @@ import type * as THREE from 'three';
 import type { Line2 } from 'three/addons/lines/Line2.js';
 import type { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import type { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import type { RobotWaypoint } from './old/robot-types';
+
+export type DropPointCoords = { x: number; y: number; z: number };
+
+export type RobotWaypoint = DropPointCoords & {
+  id: string | number;
+  label?: string;
+};
 
 export type WaypointCoords = { x: number; y: number; z: number };
 export type RobotMotionStatus =
@@ -31,7 +37,7 @@ export type RobotConfig = {
   id: string;
   model?: string;
   name?: string;
-  /** Live world-space (x, y) from backend telemetry — direct mapping, no remap. */
+  /** Live world-space position from backend or fallback telemetry. */
   position?: { x: number; y: number };
   /** Live heading (radians), "movement" convention — model-heading offset applied downstream. */
   rotationZ?: number;
@@ -72,18 +78,30 @@ export type RobotLerpTarget = {
 export type RobotRuntime = {
   id: string;
   name: string;
+  /** Stable transform anchor owned by SceneViewer.RobotRoot. */
   root: THREE.Group;
+  /** Optional cloned model attached by SceneViewer.RobotModels. */
+  visual?: THREE.Group;
   config: RobotConfig;
   status: RobotMotionStatus;
   lastConfigPoseKey: string;
-  lastConfigTrailKey: string;
+  lastConfigVisualKey?: string;
+  lastConfigTrailKey?: string;
   trail?: RobotTrailRuntime;
   lerpTarget?: RobotLerpTarget;
 };
 
-export type RobotSyncContext = {
-  scene: THREE.Scene;
-  robots: Map<string, RobotRuntime>;
-  templates: Map<string, THREE.Group>;
-  floorZ: number;
+export type RobotDefinition = {
+  id: number;
+  name?: string;
+  model: string;
+};
+
+export type RobotPositionResponse = {
+  id: number;
+  x: number;
+  y: number;
+  theta: number;
+  /** Backend-reported motion state, e.g. "driving" | "stopped". */
+  state?: string;
 };

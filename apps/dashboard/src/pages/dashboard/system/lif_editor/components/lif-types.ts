@@ -1,17 +1,7 @@
-import { ILifClient } from '@/clients/lif-editor';
-
 export type LoadStatus = 'loading' | 'success' | 'error';
 export type LoadMessage = {
   title: string;
   description?: string;
-};
-
-export type LifData = {
-  lifClient: ILifClient;
-  lifDocument: LifDocument | null;
-  loadStatus: LoadStatus;
-  loadMessage?: LoadMessage;
-  reload: () => Promise<unknown>;
 };
 
 export type LifNodePosition = { x: number; y: number };
@@ -94,12 +84,7 @@ export type LifSelection =
   | { kind: 'edge'; edgeId: string }
   | null;
 
-export type LifMapTool =
-  | 'select'
-  | 'addNode'
-  | 'addEdge'
-  | 'addStation'
-  | 'addRobotPath';
+export type LifMapTool = 'select' | 'createNode' | 'createEdge';
 
 export type RobotPathWaypoint = {
   id: string | number;
@@ -129,20 +114,34 @@ export type RobotsPayload = {
 
 export type EditorTab = 'nodes' | 'edges' | 'robots';
 
-export type LifNodeCreationOptions = {
-  dx: number;
-  dy: number;
-  label: 'Up' | 'Down' | 'Left' | 'Right' | '';
+export type LifNodeCreationOption = {
+  nodeId: string;
+  nodeName: string;
+  label: string;
   adjustableAxis: 'x' | 'y';
   axisDirection: 1 | -1;
+  defaultPosition: LifNodePosition;
 };
 
-export type ImageOverlay =  {
+export type AdjacentNodePreview = {
+  nodeId: string;
+  nodePosition: LifNodePosition;
+};
+
+export type MapImageMeta = {
+  url: string;
+  resolution: number;
+  origin: [number, number];
+  width: number;
+  height: number;
+};
+
+export type ImageOverlay = {
   url: string;
   opacity: number;
-  naturalWidth: number;
-  naturalHeight: number;
+  naturalW: number;
+  naturalH: number;
   scale: number;
   x: number;
   y: number;
-}
+};

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck -- retained only as a migration reference for the compound editor.
 import '@xyflow/react/dist/style.css';
 
 import { useCallback, useEffect, useRef, useState } from 'react';

@@ -1,5 +1,12 @@
 import { Icon } from '@chakra-ui/react';
-import { MdDashboard, MdEventNote, MdHome, MdMap } from 'react-icons/md';
+import {
+  MdDashboard,
+  MdBuild,
+  MdEdit,
+  MdEventNote,
+  MdHome,
+  MdMap,
+} from 'react-icons/md';
 import { FaNetworkWired } from 'react-icons/fa';
 import { SiUnrealengine } from 'react-icons/si';
 import { GrSchedules } from 'react-icons/gr';
@@ -55,11 +62,6 @@ export const routes: DashboardRoute[] = [
         path: '/system/map',
         icon: <Icon as={MdMap} width="20px" height="30px" color="inherit" />,
       },
-      {
-        name: 'Map old',
-        path: '/system/map_old',
-        icon: <Icon as={MdMap} width="20px" height="30px" color="inherit" />,
-      },
     ],
   },
 
@@ -75,6 +77,18 @@ export const routes: DashboardRoute[] = [
         icon: (
           <Icon as={GrSchedules} width="20px" height="30px" color="inherit" />
         ),
+      },
+    ],
+  },
+  {
+    name: 'Tools',
+    icon: <Icon as={MdBuild} width="20px" height="20px" color="inherit" />,
+    children: [
+      {
+        name: 'LIF Editor',
+        path: '/tools/lif-editor',
+        description: 'Edit, import, export, and save LIF topology documents.',
+        icon: <Icon as={MdEdit} width="20px" height="30px" color="inherit" />,
       },
     ],
   },

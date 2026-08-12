@@ -49,14 +49,6 @@ export const AdminRoutes: RouteObject[] = [
           return { Component: Map };
         },
       },
-      {
-        // Map old
-        path: 'map_old',
-        lazy: async () => {
-          const { Map } = await import('@/pages/dashboard/system/map/map_old');
-          return { Component: Map };
-        },
-      },
     ],
   },
 
@@ -65,6 +57,13 @@ export const AdminRoutes: RouteObject[] = [
     lazy: async () => {
       const { Schedule } = await import('@/pages/dashboard/operation/schedule');
       return { Component: Schedule };
+    },
+  },
+  {
+    path: 'tools/lif-editor',
+    lazy: async () => {
+      const { LifScene } = await import('@/pages/dashboard/system/lif_editor');
+      return { Component: LifScene };
     },
   },
 ];
