@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ViewportGizmo } from 'three-viewport-gizmo';
 
 import { useSceneViewerViewport3D } from './use-scene-viewer';
-import { updateRobots } from './scene-viewer-robot';
+import { updateRobots } from './scene-viewer-robot-runtime';
 import { DRACO_DECODER_PATH } from './constants';
 import {
   tuneMaterials,
@@ -23,12 +23,12 @@ import {
 // Added for THREE.Cache
 THREE.Cache.enabled = true;
 
-export interface SceneViewerViewport3DProps
-  extends Omit<HTMLChakraProps<'div'>, 'children'> {}
+export type SceneViewerViewport3DProps = Omit<
+  HTMLChakraProps<'div'>,
+  'children'
+>;
 
 export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
-  // TODO(Jonathan): Add useEffect here for the updated map data passed from context provider
-
   const { ...rest } = props;
 
   const {
@@ -212,9 +212,6 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
     gltflLoader.setDRACOLoader(dracoLoader);
 
     const mapServerUrl = mapClient?.getSceneUrl();
-    if (mapClient) {
-      gltflLoader.setRequestHeader(mapClient.getRequestHeaders());
-    }
 
     async function load(): Promise<THREE.Group> {
       if (mapServerUrl && mapServerUrl !== sceneUri) {
@@ -222,9 +219,6 @@ export function SceneViewerViewport3D(props: SceneViewerViewport3DProps) {
           return await loadGltfAsync(gltflLoader, mapServerUrl);
         } catch {
           if (cancelled) throw new Error('cancelled');
-          // The CDN fallback rejects a preflight carrying an Authorization
-          // header it doesn't expect, so clear it before retrying.
-          gltflLoader.setRequestHeader({});
         }
       }
       return loadGltfAsync(gltflLoader, sceneUri);

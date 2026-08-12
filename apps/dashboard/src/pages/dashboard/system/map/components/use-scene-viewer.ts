@@ -7,6 +7,7 @@ import {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CameraFrame } from './three-utils';
+import { getRobotPosition } from './robot-utils';
 import type { UseMapProps } from '@/clients/map';
 import type {
   RobotConfig,
@@ -38,8 +39,6 @@ const EMPTY_MODEL_URL_MAP = new Map<string, string>();
 
 export interface UseSceneViewerProps extends UseMapProps {
   sceneUri?: string;
-  showGrid?: boolean;
-  showDropPoint?: boolean;
   showPathLines?: boolean;
   showRoofSlice?: boolean;
   roofSliceHeight?: number;
@@ -63,18 +62,11 @@ function robotMotionStatusFromBackendState(
 }
 
 function robotConfigToStatus(config: RobotConfig): RobotStatus {
-  const firstWaypoint = config.path?.[0];
-  const position = config.position
-    ? { x: config.position.x, y: config.position.y, z: 0 }
-    : firstWaypoint
-      ? { x: firstWaypoint.x, y: firstWaypoint.y, z: firstWaypoint.z }
-      : { x: 0, y: 0, z: 0 };
-
   return {
     id: config.id,
     name: config.name ?? config.id,
     status: robotMotionStatusFromBackendState(config),
-    position,
+    position: getRobotPosition(config),
   };
 }
 
@@ -82,8 +74,6 @@ export function useSceneViewer(props: UseSceneViewerProps) {
   const {
     mapData,
     sceneUri: sceneUriDefault,
-    showGrid: showGridDefault,
-    showDropPoint: showDropPointDefault,
     showPathLines: showPathLinesDefault,
     showRoofSlice: showRoofSliceDefault,
     roofSliceHeight: roofSliceHeightDefault,
@@ -99,10 +89,6 @@ export function useSceneViewer(props: UseSceneViewerProps) {
   const [orbitOrigin, setOrbitOrigin] = useState<CameraFrame | undefined>();
 
   // TODO(anyone): combine states or switch to using ref for better performance?
-  const [showGrid, setShowGrid] = useState<boolean>(showGridDefault ?? true);
-  const [showDropPoint, setShowDropPoint] = useState<boolean>(
-    showDropPointDefault ?? true,
-  );
   const [showPathLines, setShowPathLines] = useState<boolean>(
     showPathLinesDefault ?? true,
   );
@@ -145,10 +131,6 @@ export function useSceneViewer(props: UseSceneViewerProps) {
     setLoadStatus,
     loadMessage,
     setLoadMessage,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,
@@ -241,10 +223,6 @@ export function useSceneViewerRobotStatusPanel() {
 export function useSceneViewerSceneControl() {
   const {
     loadStatus,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,
@@ -255,10 +233,6 @@ export function useSceneViewerSceneControl() {
 
   return {
     loadStatus,
-    showGrid,
-    setShowGrid,
-    showDropPoint,
-    setShowDropPoint,
     showPathLines,
     setShowPathLines,
     showRoofSlice,

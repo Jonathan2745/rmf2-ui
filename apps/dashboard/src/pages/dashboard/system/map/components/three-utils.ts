@@ -140,6 +140,12 @@ export function disposeObject3D(root: THREE.Object3D): void {
   });
 }
 
+export function disposeObject3DCollection(
+  objects: Iterable<THREE.Object3D>,
+): void {
+  for (const object of objects) disposeObject3D(object);
+}
+
 export type CameraFrame = {
   center: THREE.Vector3;
   maxDim: number;

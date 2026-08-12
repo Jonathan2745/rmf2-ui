@@ -1,1 +1,1 @@
-export { LifScene } from "./lif_scene"
+export { default as LifScene } from './lif_scene';

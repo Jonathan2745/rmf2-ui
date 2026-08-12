@@ -1,5 +1,5 @@
 import { LuLocateFixed } from 'react-icons/lu';
-import { Text, Box, Kbd, IconButton, Button } from '@chakra-ui/react';
+import { Text, Box, Kbd, IconButton } from '@chakra-ui/react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { SceneViewerPanel } from './scene-viewer-panel';
 import type { SceneViewerPanelProps } from './scene-viewer-panel';
@@ -42,16 +42,6 @@ export function SceneViewerViewControl(props: SceneViewerViewControlProps) {
     },
   ];
 
-  const defaultButtons = [
-    {
-      id: 'reset-robot',
-      tooltip: 'Reset all robot',
-      label: 'Reset robots',
-      colorPalette: 'blue',
-      disabled,
-    },
-  ];
-
   const defaultHints = [
     {
       id: 'pan',
@@ -78,13 +68,6 @@ export function SceneViewerViewControl(props: SceneViewerViewControlProps) {
           >
             {icon}
           </IconButton>
-        </Tooltip>
-      ))}
-      {defaultButtons.map(({ id, tooltip, label, ...rest }) => (
-        <Tooltip key={id} content={tooltip} showArrow>
-          <Button size="sm" variant="surface" pointerEvents="auto" {...rest}>
-            {label}
-          </Button>
         </Tooltip>
       ))}
       {defaultHints.map(({ id, shortcut, label, ...rest }) => (
